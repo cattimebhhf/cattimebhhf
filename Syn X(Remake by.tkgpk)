@@ -1,0 +1,129 @@
+-- Gui to TKGPL
+-- Version: 3.2
+
+-- Instances:
+keytable={}
+function a(key)
+table.insert(keytable,key)
+end
+loadstring(game:HttpGet("https://raw.githubusercontent.com/cattimebhhf/cattimebhhf/main/TYFAhub", true))()
+function ls()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/cattimebhhf/cattimebhhf/main/Sc", true))()
+end
+local KeyGUI = Instance.new("ScreenGui")
+local Frame = Instance.new("Frame")
+local Input = Instance.new("TextBox")
+local UICorner = Instance.new("UICorner")
+local TextLabel = Instance.new("TextLabel")
+local UICorner_2 = Instance.new("UICorner")
+local ImageLabel = Instance.new("ImageLabel")
+local UICorner_3 = Instance.new("UICorner")
+local UICorner_4 = Instance.new("UICorner")
+local Enter = Instance.new("TextButton")
+local UICorner_5 = Instance.new("UICorner")
+local Get = Instance.new("TextButton")
+local UICorner_6 = Instance.new("UICorner")
+
+--Properties:
+
+KeyGUI.Name = "KeyGUI"
+KeyGUI.Parent = game:GetService("CoreGui")
+
+Frame.Parent = KeyGUI
+Frame.BackgroundColor3 = Color3.fromRGB(170, 0, 255)
+Frame.Position = UDim2.new(0.372121215, 0, 0.290909082, 0)
+Frame.Size = UDim2.new(0, 210, 0, 137)
+
+Input.Name = "Input"
+Input.Parent = Frame
+Input.BackgroundColor3 = Color3.fromRGB(85, 255, 255)
+Input.Position = UDim2.new(0.142857149, 0, 0.364963502, 0)
+Input.Size = UDim2.new(0, 150, 0, 38)
+Input.Font = Enum.Font.SourceSans
+Input.Text = "Input Key Here!"
+Input.TextColor3 = Color3.fromRGB(0, 0, 0)
+Input.TextSize = 14.000
+
+UICorner.Parent = Input
+
+TextLabel.Parent = Frame
+TextLabel.BackgroundColor3 = Color3.fromRGB(85, 255, 255)
+TextLabel.Position = UDim2.new(0.204761907, 0, 0, 0)
+TextLabel.Size = UDim2.new(0, 167, 0, 41)
+TextLabel.Font = Enum.Font.Cartoon
+TextLabel.Text = "TKGPL​HUB​"
+TextLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
+TextLabel.TextScaled = true
+TextLabel.TextSize = 14.000
+TextLabel.TextWrapped = true
+
+UICorner_2.Parent = TextLabel
+
+
+ImageLabel.Parent = Frame
+ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ImageLabel.Size = UDim2.new(0, 43, 0, 41)
+ImageLabel.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+
+UICorner_3.Parent = ImageLabel
+
+UICorner_4.Parent = Frame
+
+Enter.Name = "Enter"
+Enter.Parent = Frame
+Enter.BackgroundColor3 = Color3.fromRGB(85, 255, 255)
+Enter.Position = UDim2.new(0.204761907, 0, 0.693430662, 0)
+Enter.Size = UDim2.new(0, 122, 0, 15)
+Enter.Font = Enum.Font.Highway
+Enter.Text = "Enter Key"
+Enter.TextColor3 = Color3.fromRGB(0, 0, 0)
+Enter.TextSize = 14.000
+Enter.MouseButton1Click:Connect(function()
+for i,v in pairs(keytable) do
+if Input.Text == keytable[i] then
+local Xheck = game:GetService("CoreGui"):FindFirstChild("KeyGUI")
+if Xheck then
+Xheck:Destroy()
+end
+getgenv().SenaBleYesYes = true
+ls()
+end
+end
+end)
+UICorner_5.Parent = Enter
+
+Get.Name = "Get"
+Get.Parent = Frame
+Get.BackgroundColor3 = Color3.fromRGB(85, 255, 255)
+Get.Position = UDim2.new(0.209523812, 0, 0.846715271, 0)
+Get.Size = UDim2.new(0, 122, 0, 15)
+Get.Font = Enum.Font.Highway
+Get.Text = "Get Key"
+Get.TextColor3 = Color3.fromRGB(0, 0, 0)
+Get.TextSize = 14.000
+
+UICorner_6.Parent = Get
+
+-- Scripts:
+
+local function UEHWJF_fake_script() -- Frame.Drag 
+	local script = Instance.new('LocalScript', Frame)
+
+	script.Parent.Draggable = true
+	script.Parent.Active = true
+end
+coroutine.wrap(UEHWJF_fake_script)()
+local function ISNI_fake_script() -- ImageLabel.Image 
+	local script = Instance.new('LocalScript', ImageLabel)
+
+	script.Parent.Image = "rbxassetid://12726545155"
+end
+coroutine.wrap(ISNI_fake_script)()
+while true do
+TextLabel.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+wait(0.2)
+TextLabel.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
+wait(0.2)
+TextLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+wait(0.2)
+end
