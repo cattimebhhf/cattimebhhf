@@ -1,0 +1,148 @@
+-- Gui to Lua
+-- Version: 3.2
+
+-- Instances:
+
+local ScreenGui = Instance.new("ScreenGui")
+local Main = Instance.new("Frame")
+local TextLabel = Instance.new("TextLabel")
+local TPToMorphs = Instance.new("TextButton")
+local TPToGoldenGuns = Instance.new("TextButton")
+local TPToSpawn = Instance.new("TextButton")
+local TPToBigHeads = Instance.new("TextButton")
+local Reviz = Instance.new("TextButton")
+local Close = Instance.new("TextButton")
+local Open = Instance.new("TextButton")
+
+--Properties:
+
+ScreenGui.Parent = game.CoreGui
+
+Main.Name = "Main"
+Main.Parent = ScreenGui
+Main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Main.Position = UDim2.new(0.294602036, 0, 0.300370812, 0)
+Main.Size = UDim2.new(0, 392, 0, 247)
+Main.Visible = false
+Main.Active = true
+Main.Draggable = true
+
+TextLabel.Parent = Main
+TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.BackgroundTransparency = 1.000
+TextLabel.Position = UDim2.new(-0.00255102036, 0, 0, 0)
+TextLabel.Size = UDim2.new(0, 392, 0, 50)
+TextLabel.Font = Enum.Font.Creepster
+TextLabel.Text = "Made By Ashplayesbrb"
+TextLabel.TextColor3 = Color3.fromRGB(0, 85, 255)
+TextLabel.TextSize = 29.000
+
+TPToMorphs.Name = "TP To Morphs"
+TPToMorphs.Parent = Main
+TPToMorphs.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TPToMorphs.Position = UDim2.new(0, 0, 0.28744939, 0)
+TPToMorphs.Size = UDim2.new(0, 121, 0, 39)
+TPToMorphs.Font = Enum.Font.Creepster
+TPToMorphs.Text = "TP To Morphs"
+TPToMorphs.TextColor3 = Color3.fromRGB(0, 85, 255)
+TPToMorphs.TextSize = 21.000
+TPToMorphs.MouseButton1Down:connect(function()
+	game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-707.425476, 2081.69092, -713.992676, 0.0523164943, 6.49092726e-08, 0.998630583, 8.90862211e-08, 1, -6.96653544e-08, -0.998630583, 9.26088717e-08, 0.0523164943)
+end)
+
+TPToGoldenGuns.Name = "TP To Golden Guns"
+TPToGoldenGuns.Parent = Main
+TPToGoldenGuns.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TPToGoldenGuns.Position = UDim2.new(0.691326559, 0, 0.28744939, 0)
+TPToGoldenGuns.Size = UDim2.new(0, 121, 0, 39)
+TPToGoldenGuns.Font = Enum.Font.Creepster
+TPToGoldenGuns.Text = "TP TO golden guns"
+TPToGoldenGuns.TextColor3 = Color3.fromRGB(0, 85, 255)
+TPToGoldenGuns.TextSize = 18.000
+TPToGoldenGuns.MouseButton1Down:connect(function()
+	game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-1179.72852, 2070.26172, -650.501709, -0.0261692703, -1.60675562e-08, -0.999657512, 1.65113381e-08, 1, -1.65052985e-08, 0.999657512, -1.69376158e-08, -0.0261692703)
+end)
+
+TPToSpawn.Name = "TP To Spawn"
+TPToSpawn.Parent = Main
+TPToSpawn.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TPToSpawn.Position = UDim2.new(0, 0, 0.842105269, 0)
+TPToSpawn.Size = UDim2.new(0, 121, 0, 39)
+TPToSpawn.Font = Enum.Font.Creepster
+TPToSpawn.Text = "TP to Spawn"
+TPToSpawn.TextColor3 = Color3.fromRGB(0, 85, 255)
+TPToSpawn.TextSize = 18.000
+TPToSpawn.MouseButton1Down:connect(function()
+	game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-768.368225, 2.99999928, 2.14385843, -0.249198392, 4.27929194e-08, -0.968452454, 1.18930963e-08, 1, 4.11266221e-08, 0.968452454, -1.26921063e-09, -0.249198392)
+end)
+
+TPToBigHeads.Name = "TP To Big Heads"
+TPToBigHeads.Parent = Main
+TPToBigHeads.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+TPToBigHeads.Position = UDim2.new(0.691326559, 0, 0.842105269, 0)
+TPToBigHeads.Size = UDim2.new(0, 121, 0, 39)
+TPToBigHeads.Font = Enum.Font.Creepster
+TPToBigHeads.Text = "TP To Big heads"
+TPToBigHeads.TextColor3 = Color3.fromRGB(0, 85, 255)
+TPToBigHeads.TextSize = 18.000
+TPToBigHeads.MouseButton1Down:connect(function()
+	game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-117.133041, 2063.10132, -391.655853, -0.00876615383, 1.06962714e-08, 0.999961555, 2.89294846e-08, 1, -1.04430722e-08, -0.999961555, 2.8836828e-08, -0.00876615383)
+end)
+
+Reviz.Name = "Reviz"
+Reviz.Parent = Main
+Reviz.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Reviz.Position = UDim2.new(0.34438777, 0, 0.566801667, 0)
+Reviz.Size = UDim2.new(0, 121, 0, 39)
+Reviz.Font = Enum.Font.Creepster
+Reviz.Text = "Reviz"
+Reviz.TextColor3 = Color3.fromRGB(0, 85, 255)
+Reviz.TextSize = 18.000
+Reviz.MouseButton1Down:connect(function()
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/Ashplayesbrb/Reviz/main/Reziz",true))();
+end)
+
+Close.Name = "Close"
+Close.Parent = Main
+Close.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Close.Position = UDim2.new(0.931122422, 0, 6.17764755e-08, 0)
+Close.Size = UDim2.new(0, 27, 0, 24)
+Close.Font = Enum.Font.Creepster
+Close.Text = "X"
+Close.TextColor3 = Color3.fromRGB(0, 85, 255)
+Close.TextScaled = true
+Close.TextSize = 18.000
+Close.TextWrapped = true
+
+Open.Name = "Open"
+Open.Parent = ScreenGui
+Open.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Open.Position = UDim2.new(0, 0, 0.396786153, 0)
+Open.Size = UDim2.new(0, 128, 0, 32)
+Open.Font = Enum.Font.Creepster
+Open.Text = "Open"
+Open.TextColor3 = Color3.fromRGB(0, 85, 255)
+Open.TextSize = 26.000
+
+-- Scripts:
+
+local function RPUB_fake_script() -- Close.LocalScript 
+	local script = Instance.new('LocalScript', Close)
+
+	local Main = script.Parent.Parent
+	
+	script.Parent.MouseButton1Click:Connect(function()
+		Main.Visible = false
+	end)
+end
+coroutine.wrap(RPUB_fake_script)()
+local function PRFW_fake_script() -- Open.LocalScript 
+	local script = Instance.new('LocalScript', Open)
+
+	local Main = script.Parent.Parent.Main
+	
+	script.Parent.MouseButton1Click:Connect(function()
+		Main.Visible = true
+	end)
+end
+coroutine.wrap(PRFW_fake_script)()
