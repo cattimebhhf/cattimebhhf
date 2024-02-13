@@ -1,0 +1,175 @@
+
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Smaler Hub~!", -- NOTIFICACTION LABEL
+                Text = "Checking Game..", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+            if game.PlaceId == 15068118098 then
+            wait(3)
+            game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Welcome, "..game.Players.LocalPlayer.Name, -- NOTIFICACTION LABEL
+                Text = "You are now Playing Super Toilet Brawl!", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+            game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Smaler Hub~!", -- NOTIFICACTION LABEL
+                Text = "Verification Key Completed. Loading Please Wait..", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+wait(6)
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Smaler Hub~!", -- NOTIFICACTION LABEL
+                Text = "Sucess!", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 1.4 -- DURATION OF THE NOTIFIACTIOn
+            })
+local Library = loadstring(Game:HttpGet("https://raw.githubusercontent.com/bloodball/-back-ups-for-libs/main/wizard"))()
+
+local PhantomForcesWindow = Library:NewWindow("Super Toilet Brawl")
+
+local KillingCheats = PhantomForcesWindow:NewSection("Main [Beta]")
+
+KillingCheats:CreateToggle("Auto Kill", function(vl)
+getgenv().c = vl
+
+if getgenv().Toilets ~= true then
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Tip!", -- NOTIFICACTION LABEL
+                Text = "You don't have Selected a Toilet to farm!", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+end
+
+
+if getgenv().JetpackT ~= true then
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Tip!", -- NOTIFICACTION LABEL
+                Text = "You don't have Selected a Toilet to farm!", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+end
+
+if getgenv().Toilets == true then
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Farming!", -- NOTIFICACTION LABEL
+                Text = "You are now farming: Toilet", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+end
+
+if getgenv().JetpackT == true then
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Farming!", -- NOTIFICACTION LABEL
+                Text = "You are now farming: Jetpack Toilet", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+end
+
+if getgenv().MetalT == true then
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Farming!", -- NOTIFICACTION LABEL
+                Text = "You are now farming: MetalT", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+end
+
+
+if getgenv().c == true then
+
+
+
+while getgenv().c == true do
+wait()
+if getgenv().Toilets == true and game.Workspace.Toilets:FindFirstChild("Toilet") then
+game:GetService("VirtualUser"):ClickButton1(Vector2.new(9e9, 9e9))
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Workspace.Toilets.Toilet.HumanoidRootPart.CFrame * CFrame.new(-1, -2, 3)
+game:GetService("VirtualUser"):ClickButton1(Vector2.new(9e9, 9e9))
+game:GetService("VirtualUser"):ClickButton1(Vector2.new(9e9 ,9e9))
+end
+
+if getgenv().JetpackT == true and game.Workspace.Toilets:FindFirstChild('["Jetpack Toilet"]') then
+game:GetService("VirtualUser"):ClickButton1(Vector2.new(9e9, 9e9))
+game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = game.Workspace.Toilets["Jetpack Toilet"].HumanoidRootPart.CFrame * CFrame.new(-1, -2, 3)
+game:GetService("VirtualUser"):ClickButton1(Vector2.new(9e9, 9e9))
+game:GetService("VirtualUser"):ClickButton1(Vector2.new(9e9, 9e9))
+end
+end
+end
+end)
+
+KillingCheats:CreateToggle("God Mode [Visual]", function(text)
+        getgenv().Safe = text
+        game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Warning!", -- NOTIFICACTION LABEL
+                Text = "This is Only Visual.", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+        if getgenv().Safe == true then
+        while getgenv().Safe == true do
+        wait()
+            local HP = game.Players.LocalPlayer.Character.Humanoid.MaxHealth
+            
+            game.Players.LocalPlayer.Character.Humanoid.Health = HP
+            game.Players.LocalPlayer.Character.Humanoid.MaxHealth = 9999999999
+        end
+        end
+end)
+
+KillingCheats:CreateDropdown("::Select Toilet::", {"Toilet", "Jetpack Toilet", "Soon"}, 1, function(text)
+getgenv().Toilets = false
+getgenv().MetalT = false
+getgenv().JetpackT = false
+
+if text == "Toilet" then
+getgenv().MetalT = false
+getgenv().Toilets = true
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Hey!", -- NOTIFICACTION LABEL
+                Text = "You have SucessFully Selected a Toilet to Farm!", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+getgenv().JetpackT = false
+end
+if text == "Jetpack Toilet" then
+getgenv().Toilets = false
+getgenv().MetalT = false
+getgenv().JetpackT = true
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Hey!", -- NOTIFICACTION LABEL
+                Text = "You have SucessFully Selected a Jetpack Toilet to Farm!!", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+end
+end)
+
+KillingCheats:CreateButton("Speed Boost [Bypass]", function(value)
+game.Players.LocalPlayer.Character.Humanoid.WalkSpeed += 25
+ end)
+ 
+ KillingCheats:CreateButton("Jump Boost [Bypass]", function(value)
+game.Players.LocalPlayer.Character.Humanoid.JumpPower += 25
+ end)
+ 
+ 
+local KillingCheats = PhantomForcesWindow:NewSection("YT: @masket_smile6013")
+
+local KillingCheats = PhantomForcesWindow:NewSection("Smaler Hub~")
+else
+game.StarterGui:SetCore("SendNotification", { -- SHOW NOTIFIACTION
+                Title = "Smaler Hub~!", -- NOTIFICACTION LABEL
+                Text = "You are now Playing Not Supported game! Sorry.", -- NOTIFICATION DESCRIPTION / TEXT
+                Icon = "", -- ICON (NO ICON)
+                Duration = 2.5 -- DURATION OF THE NOTIFIACTIOn
+            })
+end
