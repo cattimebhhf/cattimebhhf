@@ -49,11 +49,11 @@ local function acceptQuest()
 end
 
 -- ฟังก์ชันตีมอนสเตอร์
-local args = {
-    [1] = game:GetService("Players").LocalPlayer.LevelFolder.comboPunch
-}
-
-game:GetService("ReplicatedStorage").Events.PunchSpec:FireServer(unpack(args))
+local function attackMonster()
+    local args = {
+        [1] = game:GetService("Players").LocalPlayer.LevelFolder.comboPunch
+    }
+    game:GetService("ReplicatedStorage").Events.PunchSpec:FireServer(unpack(args))
 end
 
 -- ฟังก์ชันการ loop
@@ -99,5 +99,16 @@ toggleButton.MouseButton1Click:Connect(function()
 
         -- เริ่มต้น loop
         startLoop()
+    end
+end)
+
+-- ฟังก์ชันที่ทำงานเมื่อผู้เล่นตาย
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    -- รอจนกว่าตัวละครจะถูกสร้างขึ้นใหม่
+    character:WaitForChild("Humanoid").Died:Wait()  -- รอจนกว่าจะตาย
+    if isOn then
+        showNotification("Reactivated after death", Color3.fromRGB(0, 255, 0))  -- แจ้งเตือนสีเขียว
+        loopActive = true  -- เริ่ม loop ใหม่
+        startLoop()  -- เริ่ม loop
     end
 end)
