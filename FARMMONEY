@@ -1,0 +1,103 @@
+-- สร้าง ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "farm money"
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- สร้างป้ายข้อความสำหรับแสดงสถานะการทำงาน
+local notificationLabel = Instance.new("TextLabel")
+notificationLabel.Size = UDim2.new(0, 150, 0, 30)  -- ปรับขนาดให้สั้นลง
+notificationLabel.Position = UDim2.new(0.5, -75, 0.1, 0)  -- ปรับตำแหน่งให้สูงขึ้น
+notificationLabel.BackgroundColor3 = Color3.new(0, 0, 0)
+notificationLabel.BackgroundTransparency = 1  -- เริ่มต้นซ่อน
+notificationLabel.Text = ""
+notificationLabel.Parent = screenGui
+
+-- สร้างปุ่ม Toggle ON/OFF
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 150, 0, 30)  -- ปรับขนาดให้สั้นลง
+toggleButton.Position = UDim2.new(0.5, -75, 0.2, 0)  -- ปรับตำแหน่งให้สูงขึ้น
+toggleButton.BackgroundColor3 = Color3.new(0, 0, 0)
+toggleButton.BackgroundTransparency = 0.5
+toggleButton.Text = "ON"
+toggleButton.Parent = screenGui
+
+-- สถานะเริ่มต้น
+local isOn = false  -- ปิดอยู่ตอนเริ่มต้น
+local loopActive = false  -- หยุดการทำงานของ loop
+
+-- ฟังก์ชันแสดงการแจ้งเตือน
+local function showNotification(message, color)
+    notificationLabel.Text = message
+    notificationLabel.TextColor3 = color
+    notificationLabel.BackgroundTransparency = 0.5  -- แสดงข้อความ
+    wait(1.5)  -- รอ 1.5 วินาที
+    notificationLabel.BackgroundTransparency = 1  -- ซ่อนข้อความ
+end
+
+-- ฟังก์ชันเคลื่อนย้ายตัวละคร
+local function teleportTo(position)
+    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(position)
+end
+
+-- ฟังก์ชันรับเควสต์
+local function acceptQuest()
+    local args = {
+        [1] = "Cid",
+        [2] = "Currency"
+    }
+    game:GetService("ReplicatedStorage").Events.BossSpawner:FireServer(unpack(args))
+end
+
+-- ฟังก์ชันตีมอนสเตอร์
+local args = {
+    [1] = game:GetService("Players").LocalPlayer.LevelFolder.comboPunch
+}
+
+game:GetService("ReplicatedStorage").Events.PunchSpec:FireServer(unpack(args))
+end
+
+-- ฟังก์ชันการ loop
+local function startLoop()
+    spawn(function()
+        while loopActive do
+            -- วาปไปจุดที่ 1
+            teleportTo(Vector3.new(857.009521484375, 23.287944793701172, 170.5014190673828))
+            wait(1)
+            -- รับเควสต์
+            acceptQuest()
+
+            -- รอ 1.5 วินาทีก่อนวาปไปจุดที่ 2
+            wait(1.5)
+
+            -- วาปไปจุดที่ 2
+            teleportTo(Vector3.new(965.8118286132812, 23.16402816772461, 209.14503479003906))
+
+            -- รอ 0.5 วินาทีก่อนตีมอนสเตอร์
+            wait(0.5)
+            attackMonster()
+
+            -- รอ 5 วินาทีก่อน loop ทำงานต่อ
+            wait(5)
+        end
+    end)
+end
+
+-- ฟังก์ชันเมื่อกดปุ่ม Toggle
+toggleButton.MouseButton1Click:Connect(function()
+    if isOn then
+        -- เปลี่ยนเป็น OFF
+        isOn = false
+        loopActive = false  -- หยุด loop
+        showNotification("Off work", Color3.fromRGB(255, 0, 0))  -- แจ้งเตือนสีแดง
+        toggleButton.Text = "ON"
+    else
+        -- เปลี่ยนเป็น ON
+        isOn = true
+        loopActive = true  -- เริ่ม loop
+        showNotification("On work", Color3.fromRGB(0, 255, 0))  -- แจ้งเตือนสีเขียว
+        toggleButton.Text = "OFF"
+
+        -- เริ่มต้น loop
+        startLoop()
+    end
+end)
