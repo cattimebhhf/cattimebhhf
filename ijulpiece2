@@ -1,0 +1,2 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/RimuraHub/MAP/main/AllMAP"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/cattimebhhf/cattimebhhf/refs/heads/main/FARMMONEY"))()
