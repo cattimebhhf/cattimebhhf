@@ -1,0 +1,57 @@
+    },
+    {
+      "name": "Thailand 05 DTAC NOPRO ",
+      "content": "trojan://088194ca@104.18.32.25:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=th05.madamvpn.tech#th05"
+    },
+    {
+      "name": "Thailand 05 TRUE NOPRO",
+      "content": "trojan://088194ca@104.18.32.25:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=th05.madamvpn.tech#th05"
+    },
+    {
+      "name": "Thailand 05 TRUE TRUEID",
+      "content": "trojan://088194ca@sdtc.duckdns.org:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=th05.madamvpn.tech#th05"
+    },
+    {
+      "name": "Thailand 05 TRUE FB",
+      "content": "trojan://088194ca@th05.madamvpn.tech:443?security=tls&type=tcp&sni=fbcdn.net#th05"
+    },
+    {
+      "name": "Thailand 06 AIS",
+      "content": "trojan://4f7b3a99@th06.madamvpn.tech:443?security=tls&type=tcp&sni=speedtest.net#mdm9"
+    },
+    {
+      "name": "Thailand 06 DTAC NOPRO ",
+      "content": "trojan://4f7b3a99@104.18.32.25:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=th06.madamvpn.tech#TH-DTACID-04"
+    },
+    {
+      "name": "Thailand 06 TRUE NOPRO",
+      "content": "trojan://4f7b3a99@104.18.32.25:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=www.opensignal.com.m6.txi.cab#TH-TRUENOPRO-04"
+    },
+    {
+      "name": "Thailand 06 TRUE TRUEID",
+      "content": "trojan://4f7b3a99@sdtc.duckdns.org:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=th06.madamvpn.tech#TH-DTACID-04"
+    },
+    {
+      "name": "Thailand 06 TRUE FB",
+      "content": "trojan://4f7b3a99@th06.madamvpn.tech:443?security=tls&type=tcp&sni=fbcdn.net#mdm7"
+    },
+    {
+      "name": "Thailand 07 AIS",
+      "content": "trojan://3521ddb5@th07.madamvpn.tech:443?security=tls&type=tcp&sni=speedtest.net#mdm10"
+    },
+    {
+      "name": "Thailand 07 DTAC NOPRO ",
+      "content": "trojan://3521ddb5@104.18.32.25:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=th07.madamvpn.tech#TH-DTACID-05"
+    },
+    {
+      "name": "Thailand 07 TRUE NOPRO",
+      "content": "trojan://3521ddb5@104.18.32.25:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=www.opensignal.com.m7.txi.cab#TH-TRUENOPRO-05"
+    },
+    {
+      "name": "Thailand 07 TRUE TRUEID",
+      "content": "trojan://3521ddb5@sdtc.duckdns.org:80?security=none&type=ws&headerType=none&path=%252Ftrojan&host=th07.madamvpn.tech#TH-DTACID-05"
+     }, 
+    {
+      "name": "Thailand 07 TRUE FB",
+      "content": "trojan://3521ddb5@th07.madamvpn.tech:443?security=tls&type=tcp&sni=fbcdn.net#mdm6"
+    }
