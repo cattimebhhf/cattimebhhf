@@ -1,0 +1,376 @@
+{
+           ═══════════⋆✪⋆═════════════
+  
+               }, nil, (🇹🇭 Z7 นั่งเอ็นจอยในศาลา <\>)
+       ╟═════════════⋆✪⋆═════════════╢
+
+by : ไร้ตัวตน
+
+▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱
+{
+  "version": "11.2",
+  "message": "📚 อัพเดทล่าสุด\n+ FIX Server (ปรับปรุงเซิฟเวอร์)\n\n⚠️ หากพบปัญหาแอพเด้งออก ให้สมัครโปรกันรั่วในซิม กด 900*8131# 30 วัน / 31 บาท +VAT\n*แนะนำให้สมัคร จะได้ไว้อัพเดทแอพVPN หรือเข้าแอพธนาคารและกันเงินรั่วด้วย",
+  "data": [
+    {
+      "name": "TH02 AIS PLAY",
+      "detail": "th02.v2o4.uk",
+      "content": "vless://8fa5cf76-2d62-4400-a2c2-37d7e0d59fe6@th02.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th2"
+    },
+    {
+      "name": "TH_02 TRUE FACEBOOK GAMING",
+      "detail": "th02.v2o4.uk",
+      "content": "vless://8fa5cf76-2d62-4400-a2c2-37d7e0d59fe6@th02.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th2"
+    },
+    {
+      "name": "TH02 TRUE NOPRO",
+      "detail": "th02.v2o4.uk",
+      "content": "vless://8fa5cf76-2d62-4400-a2c2-37d7e0d59fe6@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th02.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH02 TRUE NOPRO2",
+      "detail": "th02.v2o4.uk",
+      "content": "vless://8fa5cf76-2d62-4400-a2c2-37d7e0d59fe6@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th02.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH02 DTAC NOPRO",
+      "detail": "th02.v2o4.uk",
+      "content": "vless://8fa5cf76-2d62-4400-a2c2-37d7e0d59fe6@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th02.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH__02 TRUEID LEARNFREE",
+      "detail": "th02.v2o4.uk",
+      "content": "vless://8fa5cf76-2d62-4400-a2c2-37d7e0d59fe6@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th2.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH03 AIS PLAY",
+      "detail": "th03.v2o4.uk",
+      "content": "vless://1c70f117-df53-4275-8939-851d224014f0@th03.v2o4.uk:443?path=%2Fvless&security=tls&encryption=none&host=th03.v2o4.uk&type=ws&sni=speedtest.net#th03"
+    },
+    {
+      "name": "TH_03 TRUE FACEBOOK GAMING",
+      "detail": "th03.v2o4.uk",
+      "content": "vless://1c70f117-df53-4275-8939-851d224014f0@th03.v2o4.uk:443?path=%2Fvless&security=tls&encryption=none&host=th03.v2o4.uk&type=ws&sni=fbcdn.net#th03"
+    },
+    {
+      "name": "TH03 TRUE NOPRO",
+      "detail": "th03.v2o4.uk",
+      "content": "vless://1c70f117-df53-4275-8939-851d224014f0@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th03.v2o4.uk&type=ws#th03"
+    },
+    {
+      "name": "TH03 TRUE NOPRO2",
+      "detail": "th03.v2o4.uk",
+      "content": "vless://1c70f117-df53-4275-8939-851d224014f0@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th03.v2o4.uk&type=ws#th03"
+    },
+    {
+      "name": "TH03 DTAC NOPRO",
+      "detail": "th03.v2o4.uk",
+      "content": "vless://1c70f117-df53-4275-8939-851d224014f0@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th03.v2o4.uk&type=ws#th03"
+    },
+    {
+      "name": "TH__03 TRUEID LEARNFREE",
+      "detail": "th03.v2o4.uk",
+      "content": "vless://1c70f117-df53-4275-8939-851d224014f0@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=th03.v2o4.uk&type=ws#th03"
+    },
+    {
+      "name": "TH05 AIS PLAY",
+      "detail": "th05.v2o4.uk",
+      "content": "vless://v2w5d1aw5d1aw5d1@th05.v2o4.uk:8080?security=tls&encryption=none&headerType=none&type=tcp&sni=speedtest.net#tfb13"
+    },
+    {
+      "name": "TH_05 TRUE FACEBOOK GAMING",
+      "detail": "th05.v2o4.uk",
+      "content": "vless://v2w5d1aw5d1aw5d1@th05.v2o4.uk:8000?security=tls&encryption=none&headerType=none&type=tcp&sni=fbcdn.net#true+FB+gaming-u6wcba5s"
+    },
+    {
+      "name": "TH05 TRUE NOPRO",
+      "detail": "th05.v2o4.uk",
+      "content": "vless://v2w5d1aw5d1aw5d1@t.iovpn.me:80?path=%2Fray&security=none&encryption=none&host=www.opensignal.com.th05.v2o4.uk&type=ws#th5"
+    },
+    {
+      "name": "TH05 TRUE NOPRO2",
+      "detail": "th05.v2o4.uk",
+      "content": "vless://v2w5d1aw5d1aw5d1@truebackup2.iovpn.me:80?path=%2Fray&security=none&encryption=none&host=www.opensignal.com.th05.v2o4.uk&type=ws#th5"
+    },
+    {
+      "name": "TH05 DTAC NOPRO",
+      "detail": "th05.v2o4.uk",
+      "content": "vless://v2w5d1aw5d1aw5d1@d.iovpn.me:80?path=%2Fray&security=none&encryption=none&host=www.opensignal.com.th05.v2o4.uk&type=ws#th5"
+    },
+    {
+      "name": "TH__05 TRUEID LEARNFREE",
+      "detail": "th05.v2o4.uk",
+      "content": "vless://v2w5d1aw5d1aw5d1@tid.iovpn.me:80?path=%2Fray&security=none&encryption=none&host=www.opensignal.com.th05.v2o4.uk&type=ws#trueth13"
+    },
+    {
+      "name": "TH06 AIS PLAY",
+      "detail": "th06.v2o4.uk",
+      "content": "vless://84a16de1-faeb-4bc5-b95a-71e9fa6e3b68@th06.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th06"
+    },
+    {
+      "name": "TH_06 TRUE FACEBOOK GAMING",
+      "detail": "th06.v2o4.uk",
+      "content": "vless://84a16de1-faeb-4bc5-b95a-71e9fa6e3b68@th06.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th06"
+    },
+    {
+      "name": "TH06 TRUE NOPRO",
+      "detail": "th06.v2o4.uk",
+      "content": "vless://84a16de1-faeb-4bc5-b95a-71e9fa6e3b68@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th06.v2o4.uk&type=ws#sos"
+    },
+    {
+      "name": "TH06 TRUE NOPRO2",
+      "detail": "th06.v2o4.uk",
+      "content": "vless://84a16de1-faeb-4bc5-b95a-71e9fa6e3b68@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th06.v2o4.uk&type=ws#sos"
+    },
+    {
+      "name": "TH06 DTAC NOPRO",
+      "detail": "th06.v2o4.uk",
+      "content": "vless://84a16de1-faeb-4bc5-b95a-71e9fa6e3b68@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th06.v2o4.uk&type=ws#sos"
+    },
+    {
+      "name": "TH__06 TRUEID LEARNFREE",
+      "detail": "th06.v2o4.uk",
+      "content": "vless://84a16de1-faeb-4bc5-b95a-71e9fa6e3b68@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th06.v2o4.uk&type=ws#ws-ws"
+    },
+    {
+      "name": "TH09 AIS PLAY",
+      "detail": "th09.v2o4.uk",
+      "content": "vless://a2a7a071-c814-4a9d-89df-9ac544572fef@th09.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th8"
+    },
+    {
+      "name": "TH_09 TRUE FACEBOOK GAMING",
+      "detail": "th09.v2o4.uk",
+      "content": "vless://a2a7a071-c814-4a9d-89df-9ac544572fef@th09.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th8"
+    },
+    {
+      "name": "TH09 TRUE NOPRO",
+      "detail": "th09.v2o4.uk",
+      "content": "vless://a2a7a071-c814-4a9d-89df-9ac544572fef@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th09.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH09 TRUE NOPRO2",
+      "detail": "th09.v2o4.uk",
+      "content": "vless://a2a7a071-c814-4a9d-89df-9ac544572fef@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th09.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH09 DTAC NOPRO",
+      "detail": "th09.v2o4.uk",
+      "content": "vless://a2a7a071-c814-4a9d-89df-9ac544572fef@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th09.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH__09 TRUEID LEARNFREE",
+      "detail": "th09.v2o4.uk",
+      "content": "vless://a2a7a071-c814-4a9d-89df-9ac544572fef@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th09.v2o4.uk&type=ws#th8"
+    },
+    {
+      "name": "TH10 AIS PLAY",
+      "detail": "th10.v2o4.uk",
+      "content": "vless://fdac889d-20c5-447b-bb79-b8c774c95f52@th10.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th10"
+    },
+    {
+      "name": "TH_10 TRUE FACEBOOK GAMING",
+      "detail": "th10.v2o4.uk",
+      "content": "vless://fdac889d-20c5-447b-bb79-b8c774c95f52@th10.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th10"
+    },
+    {
+      "name": "TH10 TRUE NOPRO",
+      "detail": "th10.v2o4.uk",
+      "content": "vless://fdac889d-20c5-447b-bb79-b8c774c95f52@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th10.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH10 TRUE NOPRO2",
+      "detail": "th10.v2o4.uk",
+      "content": "vless://fdac889d-20c5-447b-bb79-b8c774c95f52@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th10.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH10 DTAC NOPRO",
+      "detail": "th10.v2o4.uk",
+      "content": "vless://fdac889d-20c5-447b-bb79-b8c774c95f52@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th10.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH__10 TRUEID LEARNFREE",
+      "detail": "th10.v2o4.uk",
+      "content": "vless://fdac889d-20c5-447b-bb79-b8c774c95f52@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th10.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH11 AIS PLAY",
+      "detail": "th11.v2o4.uk",
+      "content": "vless://a033f2b6-3199-4173-bfa4-17efe1c4fe82@th11.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th10"
+    },
+    {
+      "name": "TH_11 TRUE FACEBOOK GAMING",
+      "detail": "th11.v2o4.uk",
+      "content": "vless://a033f2b6-3199-4173-bfa4-17efe1c4fe82@th11.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th10"
+    },
+    {
+      "name": "TH11 TRUE NOPRO",
+      "detail": "th11.v2o4.uk",
+      "content": "vless://a033f2b6-3199-4173-bfa4-17efe1c4fe82@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th11.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH11 TRUE NOPRO2",
+      "detail": "th11.v2o4.uk",
+      "content": "vless://a033f2b6-3199-4173-bfa4-17efe1c4fe82@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th11.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH11 DTAC NOPRO",
+      "detail": "th11.v2o4.uk",
+      "content": "vless://a033f2b6-3199-4173-bfa4-17efe1c4fe82@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th11.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH__11 TRUEID LEARNFREE",
+      "detail": "th11.v2o4.uk",
+      "content": "vless://5a033f2b-3199-4173-bfa4-17efe1c4fe82@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th11.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH12 AIS PLAY",
+      "detail": "th12.v2o4.uk",
+      "content": "vless://bbbe64f1-595a-41de-9648-588b7f92d744@th12.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th10"
+    },
+    {
+      "name": "TH_12 TRUE FACEBOOK GAMING",
+      "detail": "th12.v2o4.uk",
+      "content": "vless://bbbe64f1-595a-41de-9648-588b7f92d744@th12.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th10"
+    },
+    {
+      "name": "TH12 TRUE NOPRO",
+      "detail": "th12.v2o4.uk",
+      "content": "vless://bbbe64f1-595a-41de-9648-588b7f92d744@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th12.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH12 TRUE NOPRO2",
+      "detail": "th12.v2o4.uk",
+      "content": "vless://bbbe64f1-595a-41de-9648-588b7f92d744@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th12.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH12 DTAC NOPRO",
+      "detail": "th12.v2o4.uk",
+      "content": "vless://bbbe64f1-595a-41de-9648-588b7f92d744@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th12.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH__12 TRUEID LEARNFREE",
+      "detail": "th12.v2o4.uk",
+      "content": "vless://bbbe64f1-595a-41de-9648-588b7f92d744@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th12.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH13 AIS PLAY",
+      "detail": "th13.v2o4.uk",
+      "content": "vless://f7fdb891-66ed-46c0-af7c-cba12d9a6c77@th13.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th10"
+    },
+    {
+      "name": "TH_13 TRUE FACEBOOK GAMING",
+      "detail": "th13.v2o4.uk",
+      "content": "vless://f7fdb891-66ed-46c0-af7c-cba12d9a6c77@th13.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th10"
+    },
+    {
+      "name": "TH13 TRUE NOPRO",
+      "detail": "th13.v2o4.uk",
+      "content": "vless://f7fdb891-66ed-46c0-af7c-cba12d9a6c77@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th13.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH13 TRUE NOPRO2",
+      "detail": "th13.v2o4.uk",
+      "content": "vless://f7fdb891-66ed-46c0-af7c-cba12d9a6c77@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th13.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH13 DTAC NOPRO",
+      "detail": "th13.v2o4.uk",
+      "content": "vless://f7fdb891-66ed-46c0-af7c-cba12d9a6c77@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th13.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH__13 TRUEID LEARNFREE",
+      "detail": "th13.v2o4.uk",
+      "content": "vless://f7fdb891-66ed-46c0-af7c-cba12d9a6c77@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th13.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH14 AIS PLAY",
+      "detail": "th14.v2o4.uk",
+      "content": "vless://51dca0ca-2940-415d-b24d-14f54aea1185@th14.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th10"
+    },
+    {
+      "name": "TH_14 TRUE FACEBOOK GAMING",
+      "detail": "th14.v2o4.uk",
+      "content": "vless://51dca0ca-2940-415d-b24d-14f54aea1185@th14.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th10"
+    },
+    {
+      "name": "TH14 TRUE NOPRO",
+      "detail": "th14.v2o4.uk",
+      "content": "vless://51dca0ca-2940-415d-b24d-14f54aea1185@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th14.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH14 TRUE NOPRO2",
+      "detail": "th14.v2o4.uk",
+      "content": "vless://51dca0ca-2940-415d-b24d-14f54aea1185@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th14.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH14 DTAC NOPRO",
+      "detail": "th14.v2o4.uk",
+      "content": "vless://51dca0ca-2940-415d-b24d-14f54aea1185@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th14.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH__14 TRUEID LEARNFREE",
+      "detail": "th14.v2o4.uk",
+      "content": "vless://51dca0ca-2940-415d-b24d-14f54aea1185@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th14.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH15 AIS PLAY",
+      "detail": "th15.v2o4.uk",
+      "content": "vless://e51eecf0-7018-45e9-87eb-df7a67f4de7b@th15.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th10"
+    },
+    {
+      "name": "TH_15 TRUE FACEBOOK GAMING",
+      "detail": "th15.v2o4.uk",
+      "content": "vless://e51eecf0-7018-45e9-87eb-df7a67f4de7b@th15.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th10"
+    },
+    {
+      "name": "TH15 TRUE NOPRO",
+      "detail": "th15.v2o4.uk",
+      "content": "vless://e51eecf0-7018-45e9-87eb-df7a67f4de7b@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th15.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH15 TRUE NOPRO2",
+      "detail": "th15.v2o4.uk",
+      "content": "vless://e51eecf0-7018-45e9-87eb-df7a67f4de7b@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th15.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH15 DTAC NOPRO",
+      "detail": "th15.v2o4.uk",
+      "content": "vless://e51eecf0-7018-45e9-87eb-df7a67f4de7b@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th15.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH__15 TRUEID LEARNFREE",
+      "detail": "th15.v2o4.uk",
+      "content": "vless://e51eecf0-7018-45e9-87eb-df7a67f4de7b@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th15.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH16 AIS PLAY",
+      "detail": "th16.v2o4.uk",
+      "content": "vless://fc43e306-0c59-41fe-b84a-a49dae2ed861@th16.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=speedtest.net#th10"
+    },
+    {
+      "name": "TH_16 TRUE FACEBOOK GAMING",
+      "detail": "th16.v2o4.uk",
+      "content": "vless://fc43e306-0c59-41fe-b84a-a49dae2ed861@th16.v2o4.uk:443?security=tls&encryption=none&headerType=none&type=tcp&flow=xtls-rprx-vision-udp443&sni=fbcdn.net#th10"
+    },
+    {
+      "name": "TH16 TRUE NOPRO",
+      "detail": "th16.v2o4.uk",
+      "content": "vless://fc43e306-0c59-41fe-b84a-a49dae2ed861@t.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th16.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH16 TRUE NOPRO2",
+      "detail": "th16.v2o4.uk",
+      "content": "vless://fc43e306-0c59-41fe-b84a-a49dae2ed861@truebackup.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th16.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH16 DTAC NOPRO",
+      "detail": "th16.v2o4.uk",
+      "content": "vless://fc43e306-0c59-41fe-b84a-a49dae2ed861@d.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th16.v2o4.uk&type=ws#th108"
+    },
+    {
+      "name": "TH__16 TRUEID LEARNFREE",
+      "detail": "th16.v2o4.uk",
+      "content": "vless://fc43e306-0c59-41fe-b84a-a49dae2ed861@tid.iovpn.me:80?path=%2Fvless&security=none&encryption=none&host=www.opensignal.com.th16.v2o4.uk&type=ws#th108"
+    }
+  ]
+}
+▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱▰▱
