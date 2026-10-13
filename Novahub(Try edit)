@@ -1,0 +1,4009 @@
+--[[
+    NOVA HUB v3 - Roblox GUI (LocalScript)
+    วางไว้ที่: StarterPlayer > StarterPlayerScripts  (เป็น LocalScript)
+
+    แท็บทั้งหมด:
+    - Home      : สถิติ FPS / Ping / ผู้เล่น / เวลา + สถานะ Boost และ Shader
+    - Player    : WalkSpeed, JumpPower, FOV, Infinite Jump
+    - FPS Boost : กราฟ FPS สด, ระดับ Boost (Light/Balanced/Extreme), สวิตช์ปิดฟีเจอร์หนักทีละอย่าง,
+                  ตั้ง FPS เป้าหมาย 1-120
+    - Shader    : 10 พรีเซ็ต + ปรับความแรง + โหมดปรับแต่งเอง (Custom) + บันทึก 3 สล็อต
+    - Texture   : เลือกวัสดุบล็อค 24 แบบ, เลือกสี, ใส่ Texture ID, ใช้เฉพาะบล็อคใกล้ตัวได้
+    - Model     : โชว์โมเดล 3D ใน ViewportFrame (โมเดลที่ใส่ไว้ใน ReplicatedStorage ชื่อ NovaModel,
+                  ตัวละครของคุณ หรือผีที่สร้างอัตโนมัติจาก 51 ทรงรี) เลือกท่าเคลื่อนไหวได้ 11 แบบ ผสมได้ ลากหมุนเองได้
+    - Settings  : ภาษา ไทย/English/中文, สไตล์ (เรนโบว์ ดำ ขาว หยิน-หยาง), สีหลัก, ฟอนต์ 19 แบบ, เงา, โลโก้, ปุ่มลอย
+
+    ปุ่มเปิด/ปิด: ปุ่มโลโก้กลมลอยบนหน้าจอ (ลากย้ายได้, ใช้บนมือถือได้) หรือกด RightShift
+    หมายเหตุ: ทุกอย่างเป็นการเปลี่ยนฝั่งผู้เล่นคนเดียว (client) คนอื่นในเซิร์ฟเวอร์ไม่เห็น
+]]
+
+--// Services
+local Players          = game:GetService("Players")
+local TweenService     = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService       = game:GetService("RunService")
+local Lighting         = game:GetService("Lighting")
+local Workspace        = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local InsertService    = game:GetService("InsertService")
+
+local player = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+--// ป้องกันสร้างซ้ำ
+do
+	local old = player.PlayerGui:FindFirstChild("NovaHub")
+	if old then old:Destroy() end
+end
+
+--// ===== Theme (พาเลตต์ปัจจุบัน เปลี่ยนได้ด้วยสไตล์ในแท็บ Settings) =====
+local Theme = {
+	Background = Color3.fromRGB(18, 18, 24),
+	Surface    = Color3.fromRGB(26, 26, 35),
+	Surface2   = Color3.fromRGB(34, 34, 46),
+	Stroke     = Color3.fromRGB(52, 52, 70),
+	Text       = Color3.fromRGB(235, 235, 245),
+	SubText    = Color3.fromRGB(150, 150, 170),
+	Accent     = Color3.fromRGB(88, 130, 255),
+	Accent2    = Color3.fromRGB(190, 110, 255),
+	OnAccent   = Color3.new(1, 1, 1),
+	Hero       = Color3.fromRGB(40, 36, 70),
+	Good       = Color3.fromRGB(80, 210, 130),
+	Warn       = Color3.fromRGB(255, 190, 70),
+	Bad        = Color3.fromRGB(240, 90, 100),
+}
+
+local function C(r, g, b) return Color3.fromRGB(r, g, b) end
+
+--// ===== ระบบสีหลัก (Accent) + เรนโบว์ =====
+local accentObjects, onAccentObjects = {}, {}
+local accentHooks, themeHooks, animHooks = {}, {}, {}
+local rainbow = false
+local allConns = {}
+local function track(conn)
+	table.insert(allConns, conn)
+	return conn
+end
+
+local function bindAccent(obj, prop)
+	table.insert(accentObjects, {obj = obj, prop = prop})
+	obj[prop] = Theme.Accent
+end
+local function unbindAccent(obj, prop)
+	for i = #accentObjects, 1, -1 do
+		local a = accentObjects[i]
+		if a.obj == obj and a.prop == prop then table.remove(accentObjects, i) end
+	end
+end
+local function bindOnAccent(obj, prop)
+	table.insert(onAccentObjects, {obj = obj, prop = prop})
+	obj[prop] = Theme.OnAccent
+end
+local function onAccentFor(c)
+	local lum = 0.299 * c.R + 0.587 * c.G + 0.114 * c.B
+	return lum > 0.62 and Color3.fromRGB(16, 16, 22) or Color3.new(1, 1, 1)
+end
+local function refreshAccentDependents()
+	for i = #onAccentObjects, 1, -1 do
+		local a = onAccentObjects[i]
+		if a.obj.Parent then a.obj[a.prop] = Theme.OnAccent else table.remove(onAccentObjects, i) end
+	end
+	for _, fn in ipairs(accentHooks) do fn() end
+end
+local function setAccent(color, color2, instant)
+	rainbow = false
+	Theme.Accent = color
+	Theme.Accent2 = color2 or color
+	Theme.OnAccent = onAccentFor(color)
+	for i = #accentObjects, 1, -1 do
+		local a = accentObjects[i]
+		if a.obj.Parent then
+			if instant then
+				a.obj[a.prop] = color
+			else
+				TweenService:Create(a.obj, TweenInfo.new(0.3), {[a.prop] = color}):Play()
+			end
+		else
+			table.remove(accentObjects, i)
+		end
+	end
+	refreshAccentDependents()
+end
+local function rainbowStep()
+	local h = (os.clock() * 0.1) % 1
+	local c1 = Color3.fromHSV(h, 0.68, 1)
+	Theme.Accent = c1
+	Theme.Accent2 = Color3.fromHSV((h + 0.25) % 1, 0.68, 1)
+	Theme.OnAccent = Color3.fromRGB(16, 16, 22)
+	for i = #accentObjects, 1, -1 do
+		local a = accentObjects[i]
+		if a.obj.Parent then a.obj[a.prop] = c1 else table.remove(accentObjects, i) end
+	end
+	refreshAccentDependents()
+end
+local function startRainbow()
+	rainbow = true
+	rainbowStep()
+end
+local function seqAccent()
+	if rainbow then
+		local h = (os.clock() * 0.1) % 1
+		return ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromHSV(h, 0.68, 1)),
+			ColorSequenceKeypoint.new(0.33, Color3.fromHSV((h + 0.2) % 1, 0.68, 1)),
+			ColorSequenceKeypoint.new(0.66, Color3.fromHSV((h + 0.4) % 1, 0.68, 1)),
+			ColorSequenceKeypoint.new(1, Color3.fromHSV((h + 0.6) % 1, 0.68, 1)),
+		})
+	end
+	return ColorSequence.new(Theme.Accent, Theme.Accent2)
+end
+
+local rbAcc = 0
+track(RunService.Heartbeat:Connect(function(dt)
+	local t = os.clock()
+	for _, f in ipairs(animHooks) do f(t) end
+	if rainbow then
+		rbAcc += dt
+		if rbAcc >= 0.04 then
+			rbAcc = 0
+			rainbowStep()
+		end
+	end
+end))
+
+--// ===== Helpers =====
+--// create() จดบทบาทสี (Background/Surface/...) ไว้ในแอตทริบิวต์ เพื่อให้เปลี่ยนสไตล์ได้ทั้งหน้าต่าง
+local ROLES = {"Background", "Surface", "Surface2", "Stroke", "Text", "SubText"}
+local function tagRole(inst, prop, value)
+	if typeof(value) ~= "Color3" then return end
+	for _, r in ipairs(ROLES) do
+		if value == Theme[r] then
+			inst:SetAttribute("t_" .. prop, r)
+			return
+		end
+	end
+end
+local ROLE_PROPS = {"BackgroundColor3", "TextColor3", "Color", "PlaceholderColor3", "ScrollBarImageColor3"}
+local ROLE_PROP_SET = {}
+for _, p in ipairs(ROLE_PROPS) do ROLE_PROP_SET[p] = true end
+
+local function create(class, props, children)
+	local inst = Instance.new(class)
+	for k, v in pairs(props or {}) do
+		inst[k] = v
+		if ROLE_PROP_SET[k] then tagRole(inst, k, v) end
+	end
+	for _, c in ipairs(children or {}) do c.Parent = inst end
+	return inst
+end
+
+local function corner(r) return create("UICorner", {CornerRadius = UDim.new(0, r or 8)}) end
+local function round() return create("UICorner", {CornerRadius = UDim.new(1, 0)}) end
+local function stroke(color, t, trans)
+	return create("UIStroke", {Color = color or Theme.Stroke, Thickness = t or 1, Transparency = trans or 0, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
+end
+local function padding(p)
+	return create("UIPadding", {PaddingTop = UDim.new(0, p), PaddingBottom = UDim.new(0, p), PaddingLeft = UDim.new(0, p), PaddingRight = UDim.new(0, p)})
+end
+local function tween(obj, t, props, style, dir)
+	local tw = TweenService:Create(obj, TweenInfo.new(t, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
+	tw:Play()
+	return tw
+end
+
+--// ScreenGui
+local gui = create("ScreenGui", {
+	Name = "NovaHub", DisplayOrder = 100,
+	ResetOnSpawn = false,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	IgnoreGuiInset = true,
+	Parent = player:WaitForChild("PlayerGui"),
+})
+
+--// =====================================================
+--//   ภาษา (ไทย / English / 中文)
+--// =====================================================
+local LANG_NAMES = {th = "ไทย", en = "English", zh = "中文"}
+local LANG_CODES = {th = "TH", en = "EN", zh = "中"}
+local LANG_ORDER = {"th", "en", "zh"}
+local lang = "th"
+local DICT = {}
+local langHooks = {}
+
+local function add(th, en, zh)
+	local e = {th = th, en = en, zh = zh}
+	DICT[th] = e
+	DICT[en] = e
+end
+local function T(s)
+	local e = DICT[s]
+	return e and e[lang] or s
+end
+local function TF(s, ...)
+	return string.format(T(s), ...)
+end
+local function onLang(fn)
+	table.insert(langHooks, fn)
+	fn()
+end
+
+local function translateObj(d)
+	if d:GetAttribute("notr") then return end
+	if d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox") then
+		local o = d:GetAttribute("o")
+		if o == nil and DICT[d.Text] then
+			o = d.Text
+			d:SetAttribute("o", o)
+		end
+		if o ~= nil then
+			local t = T(o)
+			if d:GetAttribute("u") then t = string.upper(t) end
+			d.Text = t
+		end
+		if d:IsA("TextBox") then
+			local po = d:GetAttribute("op")
+			if po == nil and DICT[d.PlaceholderText] then
+				po = d.PlaceholderText
+				d:SetAttribute("op", po)
+			end
+			if po ~= nil then d.PlaceholderText = T(po) end
+		end
+	end
+end
+local function translateTree(root)
+	for _, d in ipairs(root:GetDescendants()) do translateObj(d) end
+end
+local function setLang(code)
+	if not LANG_NAMES[code] then return end
+	lang = code
+	translateTree(gui)
+	for _, fn in ipairs(langHooks) do pcall(fn) end
+end
+
+--// =====================================================
+--//   ฟอนต์
+--// =====================================================
+local FAMILY_DEFS = {
+	{name = "Gotham",       f = {"Gotham", "GothamMedium", "GothamBold", "GothamBlack"}},
+	{name = "Source Sans",  f = {"SourceSans", "SourceSansSemibold", "SourceSansBold", "SourceSansBold"}},
+	{name = "Ubuntu",       f = {"Ubuntu"}},
+	{name = "Nunito",       f = {"Nunito"}},
+	{name = "Roboto",       f = {"Roboto"}},
+	{name = "Roboto Mono",  f = {"RobotoMono"}},
+	{name = "Code",         f = {"Code"}},
+	{name = "Oswald",       f = {"Oswald"}},
+	{name = "Jura",         f = {"Jura"}},
+	{name = "Michroma",     f = {"Michroma"}},
+	{name = "Merriweather", f = {"Merriweather"}},
+	{name = "Josefin Sans", f = {"JosefinSans"}},
+	{name = "Titillium",    f = {"TitilliumWeb"}},
+	{name = "Fredoka",      f = {"FredokaOne"}},
+	{name = "Indie Flower", f = {"IndieFlower"}},
+	{name = "Kalam",        f = {"Kalam"}},
+	{name = "Arcade",       f = {"Arcade"}},
+	{name = "SciFi",        f = {"SciFi"}},
+	{name = "Fantasy",      f = {"Fantasy"}},
+}
+local FAMILIES = {}
+for _, def in ipairs(FAMILY_DEFS) do
+	local fonts, ok = {}, true
+	for i, n in ipairs(def.f) do
+		local good, v = pcall(function() return Enum.Font[n] end)
+		if good and v then fonts[i] = v else ok = false break end
+	end
+	if ok then
+		local out = {}
+		for w = 1, 4 do out[w] = fonts[math.min(w, #fonts)] end
+		table.insert(FAMILIES, {name = def.name, fonts = out})
+	end
+end
+local WEIGHT = {
+	[Enum.Font.Gotham] = 1, [Enum.Font.GothamMedium] = 2,
+	[Enum.Font.GothamBold] = 3, [Enum.Font.GothamBlack] = 4,
+}
+local curFamily = FAMILIES[1].fonts
+local function fontObj(d)
+	if (d:IsA("TextLabel") or d:IsA("TextButton") or d:IsA("TextBox")) and not d:GetAttribute("nofont") then
+		local w = d:GetAttribute("fw")
+		if not w then
+			w = WEIGHT[d.Font] or 1
+			d:SetAttribute("fw", w)
+		end
+		d.Font = curFamily[w]
+	end
+end
+local function applyFont(root)
+	for _, d in ipairs(root:GetDescendants()) do fontObj(d) end
+end
+
+--// =====================================================
+--//   เงา / เอฟเฟกต์
+--// =====================================================
+local shadowEnabled, shadowStrength, shadowOffsetMul, glowShadow = true, 1, 1, false
+local shadowRecords = {}
+local depthObjs, textShadowObjs = {}, {}
+local depthOn, textShadowOn = true, true
+
+--// เงานุ่ม: ซ้อนเฟรมโปร่งใสหลายชั้น (ไม่ใช้รูปภาพ จึงไม่พึ่ง Asset)
+local function addShadow(parent, opt)
+	local layers = opt.layers or 8
+	local holder = create("Frame", {
+		Name = "Shadow", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 0, Visible = shadowEnabled, Parent = parent,
+	})
+	for i = 1, layers do
+		local e = opt.spread * i / layers
+		local alpha = (opt.alpha or 0.5) / layers
+		local f = create("Frame", {
+			Name = "L" .. i, AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, 0, 0.5, opt.offset * shadowOffsetMul),
+			Size = UDim2.new(1, e * 2, 1, e * 2), BackgroundColor3 = Color3.new(0, 0, 0),
+			BackgroundTransparency = 1 - math.clamp(alpha * shadowStrength, 0, 0.98),
+			BorderSizePixel = 0, Parent = holder,
+		}, {create("UICorner", {CornerRadius = opt.round and UDim.new(1, 0) or UDim.new(0, (opt.radius or 14) + e)})})
+		table.insert(shadowRecords, {frame = f, alpha = alpha, off = opt.offset, holder = holder})
+		if glowShadow then bindAccent(f, "BackgroundColor3") end
+	end
+	return holder
+end
+local function refreshShadows()
+	for i = #shadowRecords, 1, -1 do
+		local r = shadowRecords[i]
+		if r.frame.Parent then
+			r.frame.BackgroundTransparency = 1 - math.clamp(r.alpha * shadowStrength, 0, 0.98)
+			r.frame.Position = UDim2.new(0.5, 0, 0.5, r.off * shadowOffsetMul)
+			r.holder.Visible = shadowEnabled
+		else
+			table.remove(shadowRecords, i)
+		end
+	end
+end
+local function setShadowGlow(on)
+	glowShadow = on
+	for _, r in ipairs(shadowRecords) do
+		if r.frame.Parent then
+			unbindAccent(r.frame, "BackgroundColor3")
+			if on then bindAccent(r.frame, "BackgroundColor3") else r.frame.BackgroundColor3 = Color3.new(0, 0, 0) end
+		end
+	end
+end
+local function setDepth(on)
+	depthOn = on
+	for i = #depthObjs, 1, -1 do
+		local d = depthObjs[i]
+		if d.hi.Parent then
+			d.hi.Visible, d.lo.Visible, d.grad.Enabled = on, on, on
+		else
+			table.remove(depthObjs, i)
+		end
+	end
+end
+local function regTextShadow(label)
+	label.TextStrokeColor3 = Color3.new(0, 0, 0)
+	label.TextStrokeTransparency = textShadowOn and 0.72 or 1
+	table.insert(textShadowObjs, label)
+end
+local function setTextShadow(on)
+	textShadowOn = on
+	for i = #textShadowObjs, 1, -1 do
+		local l = textShadowObjs[i]
+		if l.Parent then l.TextStrokeTransparency = on and 0.72 or 1 else table.remove(textShadowObjs, i) end
+	end
+end
+
+--// ขอบเรืองแสงของหน้าต่าง (ตั้งค่าจริงหลังสร้างหน้าต่าง)
+local mainStrokeRef
+local function setGlow(on)
+	if not mainStrokeRef then return end
+	unbindAccent(mainStrokeRef, "Color")
+	if on then
+		mainStrokeRef:SetAttribute("t_Color", nil)
+		bindAccent(mainStrokeRef, "Color")
+		mainStrokeRef.Thickness = 2
+		mainStrokeRef.Transparency = 0.25
+	else
+		mainStrokeRef:SetAttribute("t_Color", "Stroke")
+		mainStrokeRef.Color = Theme.Stroke
+		mainStrokeRef.Thickness = 1.5
+		mainStrokeRef.Transparency = 0
+	end
+end
+
+--// =====================================================
+--//   โลโก้ (สร้างจาก UI ล้วน ไม่ต้องใช้รูป) + หยินหยาง
+--// =====================================================
+local logos = {}
+local logoMode, styleLogo, customLogoId = "Auto", "nova", nil
+
+local function currentLogoKind()
+	if logoMode == "Nova" then return "nova" end
+	if logoMode == "Yin Yang" then return "yy" end
+	if logoMode == "Dragon" then return "dragon" end
+	return styleLogo
+end
+local function refreshLogos()
+	local kind = currentLogoKind()
+	for _, e in ipairs(logos) do
+		e.img.Visible = customLogoId ~= nil
+		if customLogoId then e.img.Image = "rbxassetid://" .. customLogoId end
+		e.nova.Visible = customLogoId == nil and kind == "nova"
+		e.yy.Visible = customLogoId == nil and kind == "yy"
+		e.dr.Visible = customLogoId == nil and kind == "dragon"
+	end
+end
+
+--// ลายหยินหยาง (☯) วาดจากวงกลม
+local function buildYinYang(parent, size)
+	local WH, BK = Color3.fromRGB(246, 246, 244), Color3.fromRGB(20, 20, 20)
+	local root = create("Frame", {
+		Name = "YinYang", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0), Size = size or UDim2.new(1, 0, 1, 0), Parent = parent,
+	})
+	create("Frame", {
+		Name = "Base", Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Parent = root,
+	}, {
+		round(),
+		create("UIGradient", {
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, WH), ColorSequenceKeypoint.new(0.499, WH),
+				ColorSequenceKeypoint.new(0.5, BK), ColorSequenceKeypoint.new(1, BK),
+			}), Rotation = 0,
+		}),
+		create("UIStroke", {Color = Color3.fromRGB(110, 110, 110), Thickness = 1, Transparency = 0.35}),
+	})
+	local function disc(cx, cy, d, color)
+		return create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(cx, 0, cy, 0), Size = UDim2.new(d, 0, d, 0),
+			BackgroundColor3 = color, BorderSizePixel = 0, Parent = root,
+		}, {round()})
+	end
+	disc(0.5, 0.25, 0.5, WH)
+	disc(0.5, 0.75, 0.5, BK)
+	disc(0.5, 0.25, 0.14, BK)
+	disc(0.5, 0.75, 0.14, WH)
+	return root
+end
+
+--// หัวมังกรจีน (วาดจากกรอบมน: เขา หนวดยาว แผงคอ ตา ฟัน) หันไปทางขวา
+local DR = {
+	jade = Color3.fromRGB(46, 168, 108), jade2 = Color3.fromRGB(28, 112, 76), gold = Color3.fromRGB(244, 198, 72),
+	red = Color3.fromRGB(214, 56, 52), dark = Color3.fromRGB(16, 30, 24), pale = Color3.fromRGB(246, 226, 160),
+}
+local function buildDragonHead(parent, size)
+	local root = create("Frame", {
+		Name = "DragonHead", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0), Size = size, Parent = parent,
+	})
+	local function part(x, y, w, h, rot, color, isRound, z)
+		return create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(x, 0, y, 0), Size = UDim2.new(w, 0, h, 0),
+			Rotation = rot or 0, BackgroundColor3 = color, BorderSizePixel = 0, ZIndex = z or 1, Parent = root,
+		}, {isRound and round() or create("UICorner", {CornerRadius = UDim.new(0.45, 0)})})
+	end
+	-- แผงคอ (เปลวสีแดงทอง) ด้านหลังหัว
+	for i = 1, 5 do
+		part(0.2 + (i % 2) * 0.04, 0.2 + i * 0.12, 0.34, 0.085, -30 + i * 14, i % 2 == 0 and DR.gold or DR.red, false, 1)
+	end
+	-- เขา (มีง่าม)
+	part(0.40, 0.17, 0.32, 0.06, -38, DR.gold, false, 2)
+	part(0.30, 0.10, 0.17, 0.045, -72, DR.gold, false, 2)
+	part(0.50, 0.12, 0.2, 0.045, -22, DR.gold, false, 2)
+	-- หนวดยาว 2 เส้น + เครา
+	part(0.60, 0.70, 0.58, 0.022, 24, DR.gold, false, 1)
+	part(0.57, 0.77, 0.52, 0.02, 36, DR.gold, false, 1)
+	part(0.62, 0.78, 0.09, 0.17, 12, DR.pale, false, 2)
+	-- กะโหลก จมูก ขากรรไกร
+	part(0.46, 0.5, 0.52, 0.44, 0, DR.jade, false, 3)
+	part(0.73, 0.46, 0.40, 0.23, -4, DR.jade, false, 3)
+	part(0.90, 0.40, 0.13, 0.11, 0, DR.gold, true, 4)
+	part(0.91, 0.42, 0.035, 0.035, 0, DR.dark, true, 5)
+	part(0.71, 0.65, 0.35, 0.12, 6, DR.jade2, false, 3)
+	part(0.72, 0.575, 0.34, 0.028, 2, DR.dark, false, 4)
+	for _, tx in ipairs({0.62, 0.70, 0.78}) do part(tx, 0.60, 0.035, 0.055, 0, Color3.new(1, 1, 1), false, 4) end
+	-- แก้มเกล็ดทอง
+	part(0.40, 0.57, 0.13, 0.13, 0, DR.gold, true, 4)
+	part(0.50, 0.62, 0.10, 0.10, 0, DR.pale, true, 4)
+	-- ตา + คิ้วแดง
+	part(0.57, 0.40, 0.11, 0.11, 0, Color3.new(1, 1, 1), true, 5)
+	part(0.585, 0.40, 0.055, 0.055, 0, DR.dark, true, 6)
+	part(0.57, 0.32, 0.17, 0.04, -16, DR.red, false, 5)
+	return root
+end
+
+--// โลโก้ NOVA (วงแหวนไล่สี + ดาว ✦) หรือหยินหยาง หรือรูปของคุณ
+local function makeLogo(parent, size)
+	local root = create("Frame", {
+		Name = "Logo", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0.5, 0), Size = size, Parent = parent,
+	})
+	local nova = create("Frame", {Name = "Nova", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Parent = root})
+	local ring = create("Frame", {
+		Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Parent = nova,
+	}, {round()})
+	local ringGrad = create("UIGradient", {Color = seqAccent(), Rotation = 0, Parent = ring})
+	local disc = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0.84, 0, 0.84, 0),
+		BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, Parent = nova,
+	}, {round()})
+	local star = create("TextLabel", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Text = "✦", TextScaled = true,
+		Font = Enum.Font.GothamBlack, TextColor3 = Color3.new(1, 1, 1), Parent = disc,
+	}, {create("UIPadding", {PaddingTop = UDim.new(0.12, 0), PaddingBottom = UDim.new(0.12, 0), PaddingLeft = UDim.new(0.12, 0), PaddingRight = UDim.new(0.12, 0)})})
+	star:SetAttribute("nofont", true)
+	local starGrad = create("UIGradient", {Color = seqAccent(), Rotation = 45, Parent = star})
+	local yy = buildYinYang(root)
+	local img = create("ImageLabel", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Image = "", ScaleType = Enum.ScaleType.Fit,
+		Visible = false, Parent = root,
+	}, {round()})
+	local dr = buildDragonHead(root, UDim2.new(1, 0, 1, 0))
+	dr.Visible = false
+	local entry = {root = root, nova = nova, yy = yy, img = img, dr = dr}
+	table.insert(logos, entry)
+	table.insert(accentHooks, function()
+		ringGrad.Color = seqAccent()
+		starGrad.Color = seqAccent()
+	end)
+	table.insert(animHooks, function(t)
+		if root.Parent then
+			ringGrad.Rotation = (t * 55) % 360
+			yy.Rotation = (t * 28) % 360
+			dr.Rotation = (t * 80) % 360
+		end
+	end)
+	refreshLogos()
+	return root
+end
+
+--// =====================================================
+--//   สไตล์ GUI (พาเลตต์ทั้งหน้าต่าง)
+--// =====================================================
+local function kp(t, c) return ColorSequenceKeypoint.new(t, c) end
+local STYLES = {
+	nova = {
+		pal = {Background = C(18, 18, 24), Surface = C(26, 26, 35), Surface2 = C(34, 34, 46), Stroke = C(52, 52, 70), Text = C(235, 235, 245), SubText = C(150, 150, 170), Hero = C(40, 36, 70)},
+		accent = C(88, 130, 255), accent2 = C(190, 110, 255), logo = "nova", deco = false,
+		preview = ColorSequence.new(C(20, 20, 28), C(88, 130, 255)),
+	},
+	rainbow = {
+		pal = {Background = C(14, 14, 20), Surface = C(22, 22, 30), Surface2 = C(32, 32, 44), Stroke = C(58, 58, 80), Text = C(240, 240, 250), SubText = C(150, 150, 175), Hero = C(44, 30, 70)},
+		rainbow = true, logo = "nova", deco = false,
+		preview = ColorSequence.new({kp(0, C(255, 110, 110)), kp(0.25, C(255, 220, 90)), kp(0.5, C(110, 230, 150)), kp(0.75, C(90, 170, 255)), kp(1, C(200, 120, 255))}),
+	},
+	black = {
+		pal = {Background = C(0, 0, 0), Surface = C(12, 12, 12), Surface2 = C(26, 26, 26), Stroke = C(70, 70, 70), Text = C(255, 255, 255), SubText = C(165, 165, 165), Hero = C(48, 48, 48)},
+		accent = C(255, 255, 255), accent2 = C(150, 150, 150), logo = "nova", deco = false,
+		preview = ColorSequence.new(C(0, 0, 0), C(255, 255, 255)),
+	},
+	white = {
+		pal = {Background = C(244, 244, 246), Surface = C(255, 255, 255), Surface2 = C(230, 230, 234), Stroke = C(200, 200, 206), Text = C(14, 14, 16), SubText = C(100, 100, 110), Hero = C(214, 214, 220)},
+		accent = C(20, 20, 24), accent2 = C(120, 120, 128), logo = "nova", deco = false,
+		preview = ColorSequence.new(C(255, 255, 255), C(20, 20, 24)),
+	},
+	ink = {
+		pal = {Background = C(12, 12, 12), Surface = C(23, 21, 20), Surface2 = C(35, 32, 30), Stroke = C(92, 76, 42), Text = C(238, 232, 216), SubText = C(160, 150, 128), Hero = C(66, 18, 18)},
+		accent = C(200, 40, 48), accent2 = C(214, 178, 62), logo = "yy", deco = true,
+		preview = ColorSequence.new({kp(0, C(14, 14, 14)), kp(0.5, C(200, 40, 48)), kp(1, C(214, 178, 62))}),
+	},
+	paper = {
+		pal = {Background = C(236, 229, 212), Surface = C(247, 242, 230), Surface2 = C(224, 215, 194), Stroke = C(190, 160, 92), Text = C(30, 26, 22), SubText = C(112, 102, 86), Hero = C(226, 194, 168)},
+		accent = C(176, 30, 38), accent2 = C(200, 150, 40), logo = "yy", deco = true,
+		preview = ColorSequence.new({kp(0, C(247, 242, 230)), kp(0.5, C(176, 30, 38)), kp(1, C(30, 26, 22))}),
+	},
+	dragon = {
+		pal = {Background = C(7, 18, 14), Surface = C(13, 30, 24), Surface2 = C(21, 46, 36), Stroke = C(58, 112, 80), Text = C(232, 244, 232), SubText = C(138, 176, 150), Hero = C(18, 74, 52)},
+		accent = C(60, 200, 124), accent2 = C(232, 190, 70), logo = "dragon", deco = "dragon",
+		preview = ColorSequence.new({kp(0, C(8, 24, 18)), kp(0.5, C(60, 200, 124)), kp(1, C(232, 190, 70))}),
+	},
+}
+local STYLE_ORDER = {"nova", "rainbow", "black", "white", "ink", "paper", "dragon"}
+local STYLE_TEXT = {
+	nova    = {"โนวา (มืด)", "ธีมน้ำเงินมืดเริ่มต้น"},
+	rainbow = {"เรนโบว์", "ขอบและสีหลักไล่ครบทุกสี"},
+	black   = {"ดำล้วน", "ดำสนิท ตัวหนังสือขาว"},
+	white   = {"ขาวสะอาด", "ขาวสว่าง ตัวหนังสือดำ"},
+	ink     = {"หยิน 阴 หมึกดำ", "แนวจีน หมึกดำ แดงชาด ทอง"},
+	paper   = {"หยาง 阳 กระดาษข้าว", "แนวจีน กระดาษข้าว หมึกจีน"},
+	dragon  = {"มังกร 龙", "แนวมังกรจีน หยกเขียวและทอง มีมังกรเลื้อยเป็นพื้นหลัง"},
+}
+local currentStyle = "nova"
+local setDeco -- กำหนดภายหลัง (ลายน้ำหยินหยาง)
+
+local function applyStyle(id)
+	local s = STYLES[id]
+	if not s then return end
+	currentStyle = id
+	for _, r in ipairs(ROLES) do Theme[r] = s.pal[r] end
+	Theme.Hero = s.pal.Hero
+	for _, d in ipairs(gui:GetDescendants()) do
+		for _, p in ipairs(ROLE_PROPS) do
+			local role = d:GetAttribute("t_" .. p)
+			if role then d[p] = Theme[role] end
+		end
+	end
+	styleLogo = s.logo
+	if s.rainbow then startRainbow() else setAccent(s.accent, s.accent2, true) end
+	refreshLogos()
+	if setDeco then setDeco(s.deco) end
+	for _, fn in ipairs(themeHooks) do pcall(fn) end
+end
+
+--// =====================================================
+--//   การแจ้งเตือน
+--// =====================================================
+local notifHolder = create("Frame", {
+	Name = "Notifications", BackgroundTransparency = 1,
+	AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -16),
+	Size = UDim2.new(0, 280, 1, -32), Parent = gui,
+}, {
+	create("UIListLayout", {
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder,
+	}),
+})
+
+local notificationsEnabled = true
+local function notify(title, text, kind, duration)
+	if not notificationsEnabled then return end
+	title, text = T(title), T(text)
+	duration = duration or 3
+	local color = kind == "good" and Theme.Good or kind == "bad" and Theme.Bad or Theme.Accent
+	local holder = create("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 64), Parent = notifHolder})
+	local slide = create("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Position = UDim2.new(1, 320, 0, 0), Parent = holder,
+	})
+	addShadow(slide, {spread = 14, offset = 5, layers = 6, radius = 10, alpha = 0.6})
+	create("Frame", {
+		BackgroundColor3 = Theme.Surface, Size = UDim2.new(1, 0, 1, 0), Parent = slide,
+	}, {
+		corner(10), stroke(Theme.Stroke),
+		create("Frame", {BackgroundColor3 = color, Size = UDim2.new(0, 4, 1, -16), Position = UDim2.new(0, 8, 0, 8), BorderSizePixel = 0}, {corner(2)}),
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 22, 0, 8), Size = UDim2.new(1, -32, 0, 20),
+			Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = title,
+		}),
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 22, 0, 28), Size = UDim2.new(1, -32, 0, 28),
+			Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.SubText, TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Text = text,
+		}),
+	})
+	applyFont(holder)
+	tween(slide, 0.35, {Position = UDim2.new(0, 0, 0, 0)}, Enum.EasingStyle.Back)
+	task.delay(duration, function()
+		tween(slide, 0.3, {Position = UDim2.new(1, 320, 0, 0)})
+		task.wait(0.35)
+		holder:Destroy()
+	end)
+end
+
+
+--// ===== พจนานุกรมแปล (ไทย / English / 中文) =====
+-- ปุ่มและแท็บ
+add("หน้าหลัก", "Home", "首页")
+add("ผู้เล่น", "Player", "玩家")
+add("เร่ง FPS", "FPS Boost", "FPS 加速")
+add("เชเดอร์", "Shader", "光影")
+add("เท็กซ์เจอร์", "Texture", "材质")
+add("โมเดล", "Model", "模型")
+add("ตั้งค่า", "Settings", "设置")
+add("เริ่ม", "Run", "运行")
+add("ใช้", "Apply", "应用")
+add("โหลด", "Load", "加载")
+add("บันทึก", "Save", "保存")
+add("รีเซ็ต", "Reset", "重置")
+add("ลบ", "Remove", "移除")
+add("แสดง", "Show", "显示")
+add("สแกน", "Scan", "扫描")
+add("สร้าง", "Create", "创建")
+add("หยุด", "Stop", "停止")
+add("คืนค่า", "Restore", "还原")
+add("ปิด", "Close", "关闭")
+add("พิมพ์ที่นี่...", "Type here...", "在此输入...")
+add("เปิดอยู่", "ON", "开")
+add("ปิดอยู่", "OFF", "关")
+add("เปิด · %d/7", "ON · %d/7", "开 · %d/7")
+add("กำหนดเอง", "Custom", "自定义")
+add("v3.0  •  RightShift / ปุ่มโลโก้ เพื่อเปิด-ปิด", "v3.0  •  RightShift / logo button to toggle", "v3.0  •  RightShift / 标志按钮 开关")
+-- หน้าหลัก
+add("สวัสดี, %s 👋", "Hello, %s 👋", "你好，%s 👋")
+add("ยินดีต้อนรับสู่ NOVA HUB เลือกแท็บด้านซ้าย: FPS Boost, Shader, Texture และ Model อยู่ในนี้แล้ว", "Welcome to NOVA HUB. Pick a tab on the left: FPS Boost, Shader, Texture and Model are all here.", "欢迎使用 NOVA HUB。请在左侧选择标签：FPS 加速、光影、材质和模型都在这里。")
+add("สถานะเรียลไทม์", "Live status", "实时状态")
+add("PING", "PING", "延迟")
+add("ผู้เล่นในเซิร์ฟเวอร์", "Players online", "服务器玩家")
+add("เวลาในเซิร์ฟเวอร์", "Server time", "服务器时间")
+add("FPS BOOST", "FPS BOOST", "FPS 加速")
+add("SHADER", "SHADER", "光影")
+-- ผู้เล่น
+add("การเคลื่อนไหว", "Movement", "移动")
+add("ความเร็วเดิน", "WalkSpeed", "行走速度")
+add("แรงกระโดด", "JumpPower", "跳跃力")
+add("กระโดดไม่จำกัด", "Infinite Jump", "无限跳跃")
+add("กระโดดซ้ำกลางอากาศได้", "Jump again in mid-air", "可在空中重复跳跃")
+add("เปิดใช้งานแล้ว", "Enabled", "已启用")
+add("ปิดใช้งานแล้ว", "Disabled", "已停用")
+add("ตัวละคร", "Character", "角色")
+add("มุมมองกล้อง (FOV)", "Field of View", "视野 (FOV)")
+add("รีเซ็ตตัวละคร", "Reset Character", "重置角色")
+add("รีเซ็ตตัวละครของคุณ", "Respawn your character", "重置你的角色")
+add("กำลังรีเซ็ตตัวละคร...", "Resetting character...", "正在重置角色...")
+-- FPS
+add("กราฟ FPS สด", "Live FPS graph", "实时 FPS 图表")
+add("เป้า", "target", "目标")
+add("ตอนนี้ %d   เฉลี่ย %d   ต่ำสุด %d   เป้าหมาย %d", "Now %d   Avg %d   Min %d   Target %d", "当前 %d   平均 %d   最低 %d   目标 %d")
+add("เปิด FPS Boost", "Enable FPS Boost", "开启 FPS 加速")
+add("ใช้ระดับที่เลือกด้านล่างทันที", "Apply the level chosen below", "立即应用下方所选等级")
+add("เปิดระดับ %s", "Level %s enabled", "已启用 %s 等级")
+add("คืนค่าทั้งหมดแล้ว", "Everything restored", "已全部还原")
+add("ระดับ Boost", "Boost level", "加速等级")
+add("เลือกปิดทีละอย่าง", "Toggle one by one", "逐项开关")
+add("ปิดเงา", "Shadows off", "关闭阴影")
+add("ปิด GlobalShadows และการสะท้อนสภาพแวดล้อม", "Disable GlobalShadows and environment reflections", "关闭全局阴影与环境反射")
+add("ปิดเอฟเฟกต์ภาพ", "Visual effects off", "关闭视觉特效")
+add("Bloom, Blur, SunRays, DoF ของเกม", "The game's Bloom, Blur, SunRays, DoF", "游戏自带的 Bloom、Blur、SunRays、DoF")
+add("ปิดพาร์ติเคิล", "Particles off", "关闭粒子")
+add("ไฟ ควัน ประกาย Trail และ Beam", "Fire, smoke, sparkles, trails and beams", "火焰、烟雾、火花、拖尾和光束")
+add("น้ำแบบเรียบ", "Flat water", "平静水面")
+add("ลดคลื่นและการสะท้อนของน้ำ", "Reduce waves and water reflections", "减少水波与水面反射")
+add("กราฟิกต่ำสุด", "Lowest graphics", "最低画质")
+add("ตั้ง Quality Level เป็น 1 (ถ้าเกมอนุญาต)", "Set Quality Level to 1 (if the game allows)", "将画质等级设为 1（若游戏允许）")
+add("วัสดุเรียบ", "Smooth materials", "平滑材质")
+add("เปลี่ยนบล็อคเป็น SmoothPlastic และปิดเงาของบล็อค", "Turn blocks into SmoothPlastic and disable block shadows", "将方块改为 SmoothPlastic 并关闭方块阴影")
+add("ซ่อน Decal/Texture", "Hide Decals/Textures", "隐藏贴花/纹理")
+add("ซ่อนรูปที่ติดบนบล็อคทั้งหมด", "Hide every image placed on blocks", "隐藏方块上的所有贴图")
+add("FPS เป้าหมาย (1-120)", "Target FPS (1-120)", "目标 FPS (1-120)")
+add("จำกัด FPS", "FPS Limit", "FPS 上限")
+add("ค่าที่ใช้บ่อย", "Common values", "常用值")
+add("ใช้ FPS Limit", "Apply FPS Limit", "应用 FPS 上限")
+add("ส่งค่าไปตั้ง FPS cap", "Send the value to set the FPS cap", "将数值设为 FPS 上限")
+add("หมายเหตุ: ถ้าสภาพแวดล้อมไม่รองรับ setfpscap ค่านี้จะแสดงเป็นเส้นเป้าหมายในกราฟอย่างเดียว", "Note: if the environment has no setfpscap, this value only shows as a target line on the graph.", "注意：若环境不支持 setfpscap，该数值仅作为图表上的目标线显示。")
+add("ตั้งค่าเป็น %d FPS แล้ว", "Set to %d FPS", "已设置为 %d FPS")
+add("Roblox ไม่ให้สคริปต์ตั้ง FPS cap จริง จึงใช้เป็นเส้นเป้าหมายในกราฟแทน", "Roblox does not let scripts set a real FPS cap, so it is used as a target line on the graph instead", "Roblox 不允许脚本设置真正的 FPS 上限，因此仅作为图表目标线")
+add("กราฟิก", "Graphics", "画质")
+add("เกมนี้ไม่อนุญาตให้สคริปต์เปลี่ยนระดับกราฟิก", "This game does not let scripts change graphics quality", "此游戏不允许脚本更改画质等级")
+-- Shader
+add("โทนหนัง คอนทราสต์สูง", "Film look, high contrast", "电影色调，高对比")
+add("สีสดใส สดชื่น", "Bright, fresh colors", "鲜艳清新的色彩")
+add("พระอาทิตย์ตกอบอุ่น", "Warm sunset", "温暖的日落")
+add("กลางคืนโทนน้ำเงิน", "Blue-toned night", "蓝色调夜晚")
+add("ขาวดำคมเข้ม", "Sharp black and white", "锐利黑白")
+add("นีออนม่วงชมพู", "Purple-pink neon", "紫粉霓虹")
+add("สมจริงเป็นธรรมชาติ", "Natural and realistic", "自然写实")
+add("ฟุ้งนุ่ม โทนฝัน", "Soft, dreamy glow", "柔和梦幻")
+add("ฟิล์มเก่าโทนอุ่น", "Warm old film", "暖色老胶片")
+add("เขียวนีออนเรืองแสง", "Glowing neon green", "发光霓虹绿")
+add("เวลาในเกม", "Game time", "游戏时间")
+add("ความสว่าง", "Brightness", "亮度")
+add("คอนทราสต์", "Contrast", "对比度")
+add("ความอิ่มสี", "Saturation", "饱和度")
+add("สีโทน แดง (R)", "Tint Red (R)", "色调 红 (R)")
+add("สีโทน เขียว (G)", "Tint Green (G)", "色调 绿 (G)")
+add("สีโทน น้ำเงิน (B)", "Tint Blue (B)", "色调 蓝 (B)")
+add("Bloom (แสงฟุ้ง)", "Bloom (glow)", "Bloom（泛光）")
+add("ขนาด Bloom", "Bloom size", "Bloom 大小")
+add("SunRays (แสงแดด)", "SunRays (sunbeams)", "SunRays（日光束）")
+add("ความหนาหมอก", "Fog density", "雾浓度")
+add("Haze (ฟ้าหลัว)", "Haze", "Haze（薄雾）")
+add("การรับแสง", "Exposure", "曝光")
+add("ระยะชัดลึก", "Depth of Field", "景深")
+add("เบลอ", "Blur", "模糊")
+add("ควบคุมหลัก", "Main controls", "主要控制")
+add("เปิด Shader", "Enable Shader", "开启光影")
+add("เปิด-ปิดเอฟเฟกต์ทั้งหมด (ปิดแล้วคืนค่าเดิมของเกม)", "Turn all effects on/off (off restores the game's defaults)", "开关所有特效（关闭后恢复游戏原设置）")
+add("เปิด %s", "Enabled %s", "已启用 %s")
+add("ปิดแล้ว คืนค่าเดิมของเกม", "Off. The game's defaults restored", "已关闭，已恢复游戏原设置")
+add("ความแรงของ Shader", "Shader strength", "光影强度")
+add("สว่างเต็มที่", "Fullbright", "全亮")
+add("เพิ่มความสว่างทั้งแมพ", "Brighten the whole map", "提亮整个地图")
+add("เลือก Shader", "Choose a Shader", "选择光影")
+add("โหมดปรับแต่ง", "Custom mode", "自定义模式")
+add("โหมดปรับแต่งเอง (Custom)", "Manual tuning", "手动调节")
+add("เปิดแผงปรับค่าทุกตัวแบบละเอียด", "Open the panel to fine-tune every value", "打开面板精细调节每个数值")
+add("ปรับค่าละเอียด", "Fine tuning", "精细调节")
+add("สล็อตบันทึก", "Save slots", "存档槽")
+add("สล็อต", "Slot", "存档槽位")
+add("บันทึกค่าปัจจุบัน", "Save current values", "保存当前数值")
+add("เก็บค่าทั้งหมดลงสล็อตที่เลือก", "Store all values in the chosen slot", "将所有数值存入所选存档槽")
+add("โหลดค่าที่บันทึก", "Load saved values", "加载已保存数值")
+add("เรียกค่าจากสล็อตที่เลือก", "Recall values from the chosen slot", "从所选存档槽读取数值")
+add("รีเซ็ตค่า Shader", "Reset Shader values", "重置光影数值")
+add("กลับเป็นค่าเริ่มต้น", "Back to defaults", "恢复默认值")
+add("บันทึกลง Slot %d", "Saved to Slot %d", "已保存到存档槽 %d")
+add("Slot %d ยังว่างอยู่", "Slot %d is empty", "存档槽 %d 为空")
+add("โหลด Slot %d แล้ว", "Loaded Slot %d", "已加载存档槽 %d")
+add("รีเซ็ตแล้ว", "Reset done", "已重置")
+-- Texture
+add("เลือกวัสดุบล็อค", "Choose block material", "选择方块材质")
+add("สีบล็อค (ไม่บังคับ)", "Block color (optional)", "方块颜色（可选）")
+add("เลือกสี", "Pick a color", "选择颜色")
+add("ใช้สีที่เลือกด้วย", "Also use the chosen color", "同时使用所选颜色")
+add("เปลี่ยนสีบล็อคพร้อมกับวัสดุ", "Recolor blocks along with the material", "更换材质时同时改变颜色")
+add("ขอบเขตและการใช้งาน", "Scope and use", "范围与使用")
+add("ใช้กับ", "Apply to", "应用于")
+add("ทุกบล็อคในแมพ", "Every block in the map", "地图中所有方块")
+add("เฉพาะบล็อคใกล้ตัว", "Only blocks near me", "仅限身边的方块")
+add("รัศมี (บล็อคใกล้ตัว)", "Radius (nearby blocks)", "半径（身边方块）")
+add("ใช้กับบล็อคที่เกิดใหม่", "Apply to new blocks", "应用于新出现的方块")
+add("บล็อคที่โผล่มาทีหลังจะเปลี่ยนตามอัตโนมัติ", "Blocks that appear later change automatically", "之后出现的方块会自动更换")
+add("เปลี่ยนวัสดุบล็อค", "Change block material", "更换方块材质")
+add("ใช้วัสดุ (และสี) ที่เลือกกับแมพ", "Apply the chosen material (and color) to the map", "将所选材质（和颜色）应用到地图")
+add("คืนค่าบล็อคเดิม", "Restore original blocks", "还原原方块")
+add("กลับเป็นวัสดุและสีเดิมของเกม", "Back to the game's original materials and colors", "恢复游戏原有材质和颜色")
+add("ใส่รูป Texture ของคุณเอง", "Use your own Texture image", "使用自己的纹理图片")
+add("รหัส Texture", "Texture ID", "纹理 ID")
+add("เช่น 6372755229", "e.g. 6372755229", "例如 6372755229")
+add("ขนาดต่อ 1 ภาพ", "Size per image", "每张图片大小")
+add("ใส่ Texture บนบล็อค", "Put Texture on blocks", "在方块上贴纹理")
+add("ติดรูปครบ 6 ด้าน (สูงสุด 500 บล็อค)", "Apply to all 6 faces (up to 500 blocks)", "贴满 6 个面（最多 500 个方块）")
+add("ลบ Texture ที่ใส่", "Remove placed Textures", "移除已贴纹理")
+add("ลบรูปที่ NOVA HUB ติดไว้ทั้งหมด", "Remove every image NOVA HUB placed", "移除 NOVA HUB 贴上的所有图片")
+add("ทุกอย่างเปลี่ยนเฉพาะฝั่งเรา คนอื่นในเซิร์ฟเวอร์ไม่เห็น ID ต้องเป็นรูปภาพ (Image) ไม่ใช่ Decal ID", "Everything changes only on your side; others in the server cannot see it. The ID must be an Image, not a Decal ID.", "所有更改仅在你这边生效，服务器里的其他人看不到。ID 必须是图片（Image），不能是 Decal ID。")
+add("เลือกวัสดุบล็อคก่อน", "Choose a block material first", "请先选择方块材质")
+add("เปลี่ยน %d บล็อค เป็น %s", "Changed %d blocks to %s", "已将 %d 个方块改为 %s")
+add("คืนค่าเดิม %d บล็อค", "Restored %d blocks", "已还原 %d 个方块")
+add("ใส่ Texture ID (ตัวเลข) ก่อน", "Enter a Texture ID (numbers) first", "请先输入纹理 ID（数字）")
+add("ใส่ Texture บน %d บล็อค", "Placed Texture on %d blocks", "已在 %d 个方块上贴纹理")
+add("ใส่ Texture บน %d บล็อค (สูงสุด %d)", "Placed Texture on %d blocks (max %d)", "已在 %d 个方块上贴纹理（上限 %d）")
+add("ลบ Texture %d ชิ้น", "Removed %d Textures", "已移除 %d 个纹理")
+-- Model
+add("ตัวอย่างโมเดล", "Model preview", "模型预览")
+add("ลากบนภาพเพื่อหมุนมุมมอง", "Drag on the image to rotate the view", "在画面上拖动以旋转视角")
+add("กำลังแสดง: %s  •  %d ชิ้น", "Showing: %s  •  %d parts", "正在显示：%s  •  %d 个部件")
+add("เลือกโมเดล", "Choose a model", "选择模型")
+add("ชื่อโมเดล (ReplicatedStorage)", "Model name (ReplicatedStorage)", "模型名称 (ReplicatedStorage)")
+add("โหลดโมเดลจากไฟล์", "Load model from file", "从文件加载模型")
+add("ใช้โมเดลที่นำเข้าไว้ใน ReplicatedStorage", "Use a model imported into ReplicatedStorage", "使用已导入 ReplicatedStorage 的模型")
+add("โมเดลผี (สร้างอัตโนมัติ)", "Ghost model (auto-built)", "幽灵模型（自动生成）")
+add("สร้างจากพาร์ตในสคริปต์ ไม่ต้องนำเข้าไฟล์", "Built from parts in the script, no import needed", "由脚本中的零件生成，无需导入文件")
+add("ใช้ตัวละครของฉัน", "Use my character", "使用我的角色")
+add("แสดงตัวละครที่คุณใส่อยู่", "Show the character you are wearing", "显示你当前的角色")
+add("ไม่พบ \"%s\" ใน ReplicatedStorage นำเข้า FBX แล้ววางไว้ที่นั่นก่อน", "\"%s\" not found in ReplicatedStorage. Import the FBX and place it there first", "在 ReplicatedStorage 中找不到“%s”，请先导入 FBX 并放在那里")
+add("โหลด %s แล้ว", "Loaded %s", "已加载 %s")
+add("โหลดไม่สำเร็จ (โมเดลว่างหรือคัดลอกไม่ได้)", "Load failed (empty or uncopyable model)", "加载失败（模型为空或无法复制）")
+add("คัดลอกตัวละครไม่ได้", "Could not copy the character", "无法复制角色")
+add("แสดง %s", "Showing %s", "显示 %s")
+add("แสดง %s ไม่ได้", "Cannot show %s", "无法显示 %s")
+add("ใส่ Mesh ID ก่อน", "Enter a Mesh ID first", "请先输入 Mesh ID")
+add("สร้าง Mesh ไม่ได้ (เกมนี้ไม่อนุญาตหรือ ID ผิด)", "Cannot create the Mesh (not allowed in this game or wrong ID)", "无法创建 Mesh（游戏不允许或 ID 错误）")
+add("โมเดลในโฟลเดอร์ NovaHub", "Models in the NovaHub folder", "NovaHub 文件夹中的模型")
+add("ยังไม่พบโฟลเดอร์ NovaHub ใน ReplicatedStorage สร้าง Folder ชื่อ NovaHub แล้วใส่โมเดลลงไป", "NovaHub folder not found in ReplicatedStorage. Create a Folder named NovaHub and put models inside.", "在 ReplicatedStorage 中未找到 NovaHub 文件夹。请创建名为 NovaHub 的 Folder 并放入模型。")
+add("พบโฟลเดอร์ NovaHub แล้ว แต่ยังไม่มีโมเดลข้างใน", "NovaHub folder found, but there are no models inside", "已找到 NovaHub 文件夹，但里面还没有模型")
+add("สแกนโฟลเดอร์ใหม่", "Rescan folder", "重新扫描文件夹")
+add("ค้นหาโมเดลใน ReplicatedStorage > NovaHub", "Look for models in ReplicatedStorage > NovaHub", "在 ReplicatedStorage > NovaHub 中查找模型")
+add("รหัส Mesh", "Mesh ID", "Mesh ID")
+add("รหัส Texture (ไม่บังคับ)", "Texture ID (optional)", "纹理 ID（可选）")
+add("เช่น 123456789", "e.g. 123456789", "例如 123456789")
+add("เช่น 987654321", "e.g. 987654321", "例如 987654321")
+add("สร้างจาก Mesh ID", "Create from Mesh ID", "从 Mesh ID 创建")
+add("ดึง Mesh จาก Asset ID มาแสดง", "Pull a Mesh from an Asset ID and show it", "通过 Asset ID 获取 Mesh 并显示")
+add("อยากได้เมชจริง: Studio > Asset Manager > Bulk Import เลือกไฟล์ FBX พร้อมรูป Texture แล้วลากโมเดลไปไว้ในโฟลเดอร์ NovaHub (Folder ที่สร้างใน ReplicatedStorage) สคริปต์จะหาเจอเอง", "Want the real mesh? Studio > Asset Manager > Bulk Import, choose the FBX with its Texture images, then drag the model into the NovaHub folder (a Folder you create in ReplicatedStorage). The script finds it by itself.", "想用真实网格？在 Studio 中打开 Asset Manager > Bulk Import，选择 FBX 和纹理图片，然后把模型拖进 NovaHub 文件夹（在 ReplicatedStorage 中创建的 Folder），脚本会自动找到。")
+add("เลือกท่าเคลื่อนไหว", "Choose a movement", "选择动作")
+add("ผสมหลายท่าพร้อมกัน", "Mix several movements", "混合多个动作")
+add("เลือกได้หลายท่า เช่น ลอยขึ้น-ลง + หมุน", "Pick several, e.g. float up-down + spin", "可多选，例如上下浮动 + 旋转")
+add("หมุนซ้าย-ขวา", "Spin left-right", "左右旋转")
+add("หมุนหน้า-หลัง", "Spin front-back", "前后翻转")
+add("กลิ้ง", "Roll", "翻滚")
+add("ลอยขึ้น-ลง", "Float up-down", "上下浮动")
+add("เลื่อนซ้าย-ขวา", "Slide left-right", "左右滑动")
+add("เข้า-ออก", "Come and go", "前后移动")
+add("วนวงกลม", "Circle", "绕圈")
+add("วนเลข 8", "Figure eight", "八字环绕")
+add("ส่ายไปมา", "Sway", "摇摆")
+add("เด้งย่อ-ขยาย", "Pulse", "脉动")
+add("สั่น", "Shake", "抖动")
+add("หยุดนิ่ง", "Freeze", "静止")
+add("ยกเลิกท่าเคลื่อนไหวทั้งหมด", "Cancel every movement", "取消所有动作")
+add("ปรับการเคลื่อนไหว", "Adjust movement", "调整动作")
+add("กลับทิศทาง", "Reverse direction", "反向")
+add("สลับทิศ ซ้าย↔ขวา ขึ้น↔ลง", "Swap direction left↔right up↔down", "切换方向 左↔右 上↔下")
+add("หยุดชั่วคราว", "Pause", "暂停")
+add("ค้างท่าไว้ที่ตำแหน่งปัจจุบัน", "Hold the pose at the current position", "定格在当前位置")
+add("ความเร็ว", "Speed", "速度")
+add("ระยะเคลื่อนที่", "Range", "移动幅度")
+add("มุมมอง", "View", "视角")
+add("ขนาดโมเดล", "Model size", "模型大小")
+add("ซูมกล้อง", "Camera zoom", "相机缩放")
+add("ความสว่างแสง", "Light brightness", "光照亮度")
+add("สีพื้นหลัง", "Background color", "背景颜色")
+add("ลากเพื่อหมุนเอง", "Drag to rotate", "拖动旋转")
+add("ลากนิ้ว/เมาส์บนภาพเพื่อหมุนมุมมอง", "Drag your finger/mouse on the image to rotate the view", "在画面上用手指/鼠标拖动来旋转视角")
+add("รีเซ็ตมุมมอง", "Reset view", "重置视角")
+add("คืนมุมหมุนที่ลากไว้", "Undo the dragged rotation", "还原拖动的旋转角度")
+-- ตั้งค่า
+add("ภาษา", "Language", "语言")
+add("ภาษาของ GUI", "GUI language", "界面语言")
+add("สไตล์ GUI", "GUI style", "界面风格")
+add("สีหลัก (Accent)", "Accent color", "主题色")
+add("ฟอนต์", "Fonts", "字体")
+add("ถ้าฟอนต์ที่เลือกไม่มีตัวอักษรไทยหรือจีน Roblox จะใช้ฟอนต์สำรองของระบบแสดงแทน", "If the chosen font has no Thai or Chinese characters, Roblox shows them with a built-in fallback font.", "若所选字体没有泰文或中文字符，Roblox 会改用内置备用字体显示。")
+add("เงาและเอฟเฟกต์", "Shadows & effects", "阴影与特效")
+add("เงาหน้าต่าง", "Window shadow", "窗口阴影")
+add("เงานุ่มรอบหน้าต่าง ปุ่ม และแจ้งเตือน", "Soft shadows around the window, buttons and notifications", "窗口、按钮和通知周围的柔和阴影")
+add("เงาเรืองแสงสีหลัก", "Accent glow shadow", "主题色发光阴影")
+add("ให้เงาเป็นสีหลักเรืองรอบๆ", "Tint the shadow with the accent color", "让阴影带上主题色光晕")
+add("ความลึกของการ์ด", "Card depth", "卡片层次")
+add("ไฮไลต์ขอบบนและเงาด้านล่างของการ์ด", "Top highlight and bottom shade on cards", "卡片的顶部高光与底部阴影")
+add("เงาตัวอักษร", "Text shadow", "文字阴影")
+add("เงาบางๆ ใต้หัวข้อ", "Subtle shadow under headings", "标题下方的淡淡阴影")
+add("ขอบเรืองแสง", "Glowing border", "发光边框")
+add("ขอบหน้าต่างเรืองตามสีหลัก", "Window border glows in the accent color", "窗口边框随主题色发光")
+add("ความเข้มเงา", "Shadow strength", "阴影强度")
+add("ระยะเงา", "Shadow offset", "阴影偏移")
+add("ความโปร่งใสหน้าต่าง", "Window transparency", "窗口透明度")
+add("โลโก้", "Logo", "标志")
+add("รูปแบบโลโก้", "Logo style", "标志样式")
+add("รูปโลโก้ของคุณ (Image ID)", "Your logo (Image ID)", "你的标志 (Image ID)")
+add("เว้นว่างเพื่อใช้โลโก้เดิม", "Leave empty for the default logo", "留空则使用默认标志")
+add("ยังไม่มีไฟล์โลโก้จากคุณ จึงวาดโลโก้ด้วย UI ให้ก่อน ใส่ Image ID (ไม่ใช่ Decal ID) เพื่อเปลี่ยนเป็นโลโก้จริงของคุณ", "No logo file was provided, so a logo is drawn with UI for now. Enter an Image ID (not a Decal ID) to use your own.", "尚未提供标志文件，目前用 UI 绘制了标志。输入 Image ID（不是 Decal ID）即可换成你自己的标志。")
+add("ใช้โลโก้ของคุณแล้ว", "Your logo is now in use", "已使用你的标志")
+add("กลับไปใช้โลโก้เดิมแล้ว", "Back to the default logo", "已恢复默认标志")
+add("ทั่วไป", "General", "常规")
+add("ปุ่มโลโก้ลอย เปิด/ปิด GUI", "Floating logo button", "悬浮标志按钮")
+add("แสดงปุ่มกลมบนหน้าจอ (ลากย้ายได้)", "Show the round button on screen (draggable)", "在屏幕上显示圆形按钮（可拖动）")
+add("การแจ้งเตือน", "Notifications", "通知")
+add("แสดงป๊อปอัพมุมขวาล่าง", "Show pop-ups at the bottom right", "在右下角显示弹出通知")
+add("ปุ่มลัด: RightShift = ซ่อน/แสดง GUI  •  มือถือใช้ปุ่มโลโก้ลอย", "Shortcut: RightShift = hide/show the GUI  •  On mobile use the floating logo button", "快捷键：RightShift = 隐藏/显示 GUI  •  手机请使用悬浮标志按钮")
+add("ปิด GUI ถาวร", "Close GUI for good", "永久关闭 GUI")
+add("ลบ GUI และคืนค่า Shader", "Delete the GUI and restore Shader", "删除 GUI 并还原光影")
+add("ธีม", "Theme", "主题")
+add("โนวา (มืด)", "Nova (dark)", "新星（暗色）")
+add("ธีมน้ำเงินมืดเริ่มต้น", "Default dark-blue theme", "默认深蓝主题")
+add("เรนโบว์", "Rainbow", "彩虹")
+add("ขอบและสีหลักไล่ครบทุกสี", "Borders and accent cycle through every color", "边框与主色循环显示所有颜色")
+add("ดำล้วน", "Pure black", "纯黑")
+add("ดำสนิท ตัวหนังสือขาว", "Jet black with white text", "漆黑底，白色文字")
+add("ขาวสะอาด", "Clean white", "洁白")
+add("ขาวสว่าง ตัวหนังสือดำ", "Bright white with black text", "明亮白底，黑色文字")
+add("หยิน 阴 หมึกดำ", "Yin 阴 black ink", "阴 · 墨黑")
+add("แนวจีน หมึกดำ แดงชาด ทอง", "Chinese style: black ink, vermilion, gold", "中国风：墨黑、朱红、金色")
+add("หยาง 阳 กระดาษข้าว", "Yang 阳 rice paper", "阳 · 宣纸")
+add("แนวจีน กระดาษข้าว หมึกจีน", "Chinese style: rice paper and ink", "中国风：宣纸与水墨")
+-- ใหม่
+add("มังกร 龙", "Dragon 龙", "龙 · 神龙")
+add("แนวมังกรจีน หยกเขียวและทอง มีมังกรเลื้อยเป็นพื้นหลัง", "Chinese dragon: jade and gold with a coiling dragon background", "中国龙风格：翡翠绿与金色，背景有盘旋的龙")
+add("ผลของ FPS Boost", "FPS Boost result", "FPS 加速效果")
+add("ก่อน Boost", "Before Boost", "Boost 前")
+add("หลัง Boost", "After Boost", "Boost 后")
+add("เปลี่ยนแปลง", "Change", "变化")
+add("ยังไม่ได้เปิด Boost เปิดสวิตช์ด้านล่างเพื่อวัดผล", "Boost is off. Turn it on below to measure the result", "Boost 未开启，请在下方开启以测量效果")
+add("กำลังวัดผล Boost...", "Measuring Boost result...", "正在测量 Boost 效果...")
+add("Boost เปิดอยู่ วัดผลต่อเนื่อง", "Boost is on, measuring continuously", "Boost 已开启，持续测量中")
+add("Boost ปิดอยู่ (แสดงผลครั้งล่าสุด)", "Boost is off (showing the last result)", "Boost 已关闭（显示上次结果）")
+add("ตอนนี้ %d   เฉลี่ย %d   ต่ำสุด %d   สูงสุด %d   เป้าหมาย %d", "Now %d   Avg %d   Min %d   Max %d   Target %d", "当前 %d   平均 %d   最低 %d   最高 %d   目标 %d")
+add("⚡ เร่งแล้ว", "⚡ BOOSTED", "⚡ 已加速")
+add("⚡ เร่งแล้ว %s%d%%", "⚡ BOOSTED %s%d%%", "⚡ 已加速 %s%d%%")
+add("BOOST ปิด", "BOOST OFF", "BOOST 关")
+add("หน้าต่างลอย", "Floating window", "悬浮窗口")
+add("หน้าต่างสถานะลอย", "Floating status window", "悬浮状态窗口")
+add("แถบเล็กแนวนอนสีตามธีม ลากย้ายได้", "A small horizontal bar in theme colors, draggable", "随主题变色的横向小条，可拖动")
+add("แผงสถานะใส", "Glass status panel", "透明状态面板")
+add("แสดง Boost, Shader, Texture, Ping ใต้แถบ", "Show Boost, Shader, Texture, Ping below the bar", "在条下方显示 Boost、光影、材质、延迟")
+add("ความใสของแผงสถานะ", "Status panel clarity", "状态面板透明度")
+add("สุ่ม Shader", "Random Shader", "随机光影")
+add("สุ่มพรีเซ็ตมาลองใช้", "Try a random preset", "随机试用一个预设")
+add("แสงทองยามเย็น แสงลอดฟุ้ง", "Golden evening light with glowing rays", "金色黄昏，光芒四射")
+add("จันทร์เลือด ท้องฟ้าแดงฉาน", "Blood moon and a crimson sky", "血月与赤红天空")
+add("ใต้ทะเลลึก ฟองอากาศลอย", "Deep underwater with rising bubbles", "深海，气泡上浮")
+add("หิมะโปรยปราย โทนฟ้าเย็น", "Falling snow in cool blue tones", "飘雪，冷蓝色调")
+add("ใบไม้ร่วง โทนส้มอุ่น", "Falling leaves in warm orange", "落叶，暖橙色调")
+add("ซากุระปลิว โทนชมพูนุ่ม", "Drifting sakura in soft pink", "樱花飘落，柔和粉色")
+add("ตัวอักษรเขียวไหลลงจอ", "Green code raining down the screen", "绿色代码从屏幕落下")
+add("นีออนยุค 80 ม่วงชมพู", "80s purple-pink neon", "80 年代紫粉霓虹")
+add("หมอกหนา น่าขนลุก", "Thick, creepy fog", "浓雾，令人毛骨悚然")
+add("ทะเลทรายร้อนระอุ", "Scorching desert", "炽热的沙漠")
+add("แสงเหนือ ดาวเต็มฟ้า สีวนช้าๆ", "Aurora, a sky full of stars, slowly shifting colors", "极光、满天星斗，色彩缓缓流转")
+add("ภูเขาไฟ ถ่านไฟลอย", "Volcano with floating embers", "火山，火星飘浮")
+add("ฝนตกหนัก ฟ้าแลบ", "Heavy rain and lightning", "倾盆大雨与闪电")
+add("สีจัดจ้านสไตล์การ์ตูน", "Bold cartoon-style colors", "鲜明的卡通风色彩")
+add("หยกเขียวทอง หิ่งห้อยลอยล้อมมังกร", "Jade and gold with fireflies around the dragon", "翡翠与金色，萤火虫环绕神龙")
+add("จอกว้างแบบหนังฟอร์มยักษ์", "Widescreen blockbuster look", "大片宽银幕效果")
+add("ภาพเก่าสีน้ำตาลอมเหลือง", "Old photo in sepia brown", "棕黄色老照片")
+add("โตเกียวยามค่ำ ฝนนีออน", "Tokyo at night with neon rain", "东京夜晚，霓虹雨")
+add("แสงและสี", "Light & color", "光线与色彩")
+add("บรรยากาศและท้องฟ้า", "Atmosphere & sky", "大气与天空")
+add("เอฟเฟกต์ภาพ", "Visual effects", "视觉特效")
+add("ฟิล์มและขอบจอ", "Film & screen edges", "胶片与屏幕边缘")
+add("อนุภาคบนจอ", "Screen particles", "屏幕粒子")
+add("แอนิเมชัน", "Animation", "动画")
+add("ความสว่างแสงโลก", "World light", "世界亮度")
+add("แสงแวดล้อมสี", "Tinted ambient", "环境光着色")
+add("ความนุ่มของเงา", "Shadow softness", "阴影柔和度")
+add("การสะท้อน", "Reflections", "反射强度")
+add("โทนสีท้องฟ้า", "Sky hue", "天空色相")
+add("ความอิ่มสีท้องฟ้า", "Sky saturation", "天空饱和度")
+add("ขอบมืด (Vignette)", "Vignette", "暗角")
+add("แถบหนัง (Letterbox)", "Letterbox", "电影黑边")
+add("เม็ดฟิล์ม", "Film grain", "胶片颗粒")
+add("เส้นสแกน", "Scanlines", "扫描线")
+add("สีเคลือบจอ (องศา)", "Screen tint hue", "屏幕色罩色相")
+add("ความเข้มสีเคลือบจอ", "Screen tint strength", "屏幕色罩强度")
+add("ปริมาณอนุภาค", "Particle amount", "粒子数量")
+add("ความเร็วอนุภาค", "Particle speed", "粒子速度")
+add("วงจรวัน-คืนอัตโนมัติ", "Auto day-night cycle", "自动昼夜循环")
+add("สีวนอัตโนมัติ", "Auto color cycle", "自动色彩循环")
+add("แสงเต้นตามจังหวะ", "Pulsing bloom", "泛光脉动")
+add("ชนิดอนุภาค", "Particle type", "粒子类型")
+add("พายุฟ้าแลบ", "Thunderstorm", "雷暴")
+add("ฟ้าแลบวาบเป็นช่วงๆ", "Lightning flashes now and then", "间歇闪电")
+add("ไม่มี", "None", "无")
+add("หิมะ", "Snow", "雪")
+add("ฝน", "Rain", "雨")
+add("ซากุระ", "Sakura", "樱花")
+add("หิ่งห้อย", "Fireflies", "萤火虫")
+add("ถ่านไฟ", "Embers", "火星")
+add("ดาว", "Stars", "星星")
+add("โค้ดเมทริกซ์", "Matrix", "矩阵代码")
+add("ฟองอากาศ", "Bubbles", "气泡")
+-- แจ้งเตือนระบบ
+add("ซ่อนแล้ว กดปุ่มโลโก้หรือ RightShift เพื่อเปิดอีกครั้ง", "Hidden. Press the logo button or RightShift to open again", "已隐藏。点击标志按钮或按 RightShift 重新打开")
+add("โหลดสำเร็จ! กดปุ่มโลโก้หรือ RightShift เพื่อเปิด-ปิด", "Loaded! Press the logo button or RightShift to toggle", "加载成功！点击标志按钮或按 RightShift 开关")
+
+--// ===== ขอบที่ถูกเลือก (ตามสีหลักเสมอ แม้เปลี่ยนสไตล์/เรนโบว์) =====
+local selStrokes = setmetatable({}, {__mode = "k"})
+local function setSel(st, on, thick)
+	selStrokes[st] = on or nil
+	st:SetAttribute("t_Color", on and nil or "Stroke")
+	tween(st, 0.2, {Color = on and Theme.Accent or Theme.Stroke, Thickness = on and (thick or 2) or 1})
+end
+table.insert(accentHooks, function()
+	for st in pairs(selStrokes) do
+		if st.Parent then st.Color = Theme.Accent end
+	end
+end)
+table.insert(themeHooks, function()
+	for st in pairs(selStrokes) do
+		if st.Parent then st.Color = Theme.Accent end
+	end
+end)
+
+--// Main window (ปรับขนาดตามหน้าจอ)
+local WIDTH, HEIGHT
+do
+	local vp = camera and camera.ViewportSize or Vector2.new(1280, 720)
+	WIDTH  = math.clamp(vp.X - 24, 360, 600)
+	HEIGHT = math.clamp(vp.Y - 24, 280, 420)
+end
+local SIDEBAR = WIDTH < 480 and 118 or 150
+
+local main = create("Frame", {
+	Name = "Main", AnchorPoint = Vector2.new(0.5, 0.5),
+	Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(0, 0, 0, 0),
+	BackgroundColor3 = Theme.Background, ClipsDescendants = true, Parent = gui,
+}, {
+	corner(14), stroke(Theme.Stroke, 1.5),
+	create("UIGradient", {
+		Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(205, 205, 220)),
+		Rotation = 90,
+	}),
+})
+mainStrokeRef = main:FindFirstChildOfClass("UIStroke")
+setGlow(true)
+
+--// เงาหน้าต่าง (อยู่นอกหน้าต่างเพราะหน้าต่างตัดขอบ)
+do
+	local shadowRoot = create("Frame", {
+		Name = "MainShadow", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = main.Position, Size = main.Size, ZIndex = 0, Parent = gui,
+	})
+	addShadow(shadowRoot, {spread = 34, offset = 12, layers = 10, radius = 14, alpha = 0.75})
+	local function syncShadow()
+		shadowRoot.Position = main.Position
+		shadowRoot.Size = main.Size
+		shadowRoot.Visible = main.Visible and main.Size.X.Offset > 80
+	end
+	for _, p in ipairs({"Position", "Size", "Visible"}) do
+		main:GetPropertyChangedSignal(p):Connect(syncShadow)
+	end
+end
+tween(main, 0.5, {Size = UDim2.new(0, WIDTH, 0, HEIGHT)}, Enum.EasingStyle.Back)
+
+--// Top bar
+local topbar = create("Frame", {
+	Name = "Topbar", Size = UDim2.new(1, 0, 0, 44), ZIndex = 2,
+	BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, Parent = main,
+})
+do
+	local lineBar = create("Frame", {
+		Size = UDim2.new(1, 0, 0, 2), Position = UDim2.new(0, 0, 1, -2),
+		BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Parent = topbar,
+	})
+	local lineGrad = create("UIGradient", {Color = seqAccent(), Parent = lineBar})
+	table.insert(accentHooks, function() lineGrad.Color = seqAccent() end)
+end
+create("Frame", { -- เงาใต้แถบหัว
+	BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Position = UDim2.new(0, 0, 1, 0),
+	Size = UDim2.new(1, 0, 0, 8), ZIndex = 3, Parent = topbar,
+}, {create("UIGradient", {Transparency = NumberSequence.new(0.7, 1), Rotation = 90})})
+
+makeLogo(topbar, UDim2.new(0, 30, 0, 30)).Position = UDim2.new(0, 31, 0.5, -1)
+regTextShadow(create("TextLabel", {
+	BackgroundTransparency = 1, Position = UDim2.new(0, 54, 0, 6), Size = UDim2.new(1, -190, 0, 20),
+	Font = Enum.Font.GothamBlack, TextSize = 16, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+	TextXAlignment = Enum.TextXAlignment.Left, Text = "NOVA HUB", Parent = topbar,
+}))
+create("TextLabel", {
+	BackgroundTransparency = 1, Position = UDim2.new(0, 54, 0, 25), Size = UDim2.new(1, -190, 0, 14),
+	Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+	TextXAlignment = Enum.TextXAlignment.Left, Text = "v3.0  •  RightShift / ปุ่มโลโก้ เพื่อเปิด-ปิด", Parent = topbar,
+})
+
+local function topButton(text, xOffset, hoverColor, w)
+	local b = create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, xOffset, 0.5, -1),
+		Size = UDim2.new(0, w or 28, 0, 28), BackgroundColor3 = Theme.Surface2,
+		Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.Text,
+		Text = text, AutoButtonColor = false, Parent = topbar,
+	}, {corner(8)})
+	local function hc() return type(hoverColor) == "function" and hoverColor() or hoverColor end
+	b.MouseEnter:Connect(function() tween(b, 0.15, {BackgroundColor3 = hc()}) end)
+	b.MouseLeave:Connect(function() tween(b, 0.15, {BackgroundColor3 = Theme.Surface2}) end)
+	return b
+end
+local closeBtn = topButton("✕", -12, Theme.Bad)
+local minBtn   = topButton("–", -46, function() return Theme.Stroke end)
+local langBtn  = topButton(LANG_CODES[lang], -80, function() return Theme.Stroke end, 34)
+langBtn.TextSize = 12
+onLang(function() langBtn.Text = LANG_CODES[lang] end)
+langBtn.MouseButton1Click:Connect(function()
+	local idx = table.find(LANG_ORDER, lang) or 1
+	setLang(LANG_ORDER[idx % #LANG_ORDER + 1])
+end)
+
+--// Dragging หน้าต่าง
+do
+	local dragging, dragStart, startPos
+	topbar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging, dragStart, startPos = true, input.Position, main.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then dragging = false end
+			end)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local d = input.Position - dragStart
+			tween(main, 0.08, {Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)})
+		end
+	end)
+end
+
+--// Body
+local body = create("Frame", {
+	Name = "Body", BackgroundTransparency = 1,
+	Position = UDim2.new(0, 0, 0, 44), Size = UDim2.new(1, 0, 1, -44), Parent = main,
+})
+
+--// Sidebar
+local sidebar = create("Frame", {
+	Name = "Sidebar", BackgroundColor3 = Theme.Surface, BorderSizePixel = 0, ZIndex = 2,
+	Size = UDim2.new(0, SIDEBAR, 1, 0), Parent = body,
+})
+create("Frame", { -- เงาขอบขวาของแถบเมนู
+	BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0, Position = UDim2.new(1, 0, 0, 0),
+	Size = UDim2.new(0, 8, 1, 0), ZIndex = 3, Parent = sidebar,
+}, {create("UIGradient", {Transparency = NumberSequence.new(0.65, 1), Rotation = 0})})
+local tabList = create("ScrollingFrame", {
+	BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, -76),
+	CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y,
+	ScrollBarThickness = 0, Parent = sidebar,
+}, {
+	padding(10),
+	create("UIListLayout", {Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder}),
+})
+
+--// Profile card
+local profile = create("Frame", {
+	BackgroundColor3 = Theme.Surface2, AnchorPoint = Vector2.new(0.5, 1),
+	Position = UDim2.new(0.5, 0, 1, -10), Size = UDim2.new(1, -20, 0, 56), Parent = sidebar,
+}, {corner(10), stroke(Theme.Stroke)})
+local avatar = create("ImageLabel", {
+	BackgroundColor3 = Theme.Background, Position = UDim2.new(0, 8, 0.5, -17), Size = UDim2.new(0, 34, 0, 34),
+	Image = "", Parent = profile,
+}, {round()})
+do
+	local avStroke = stroke(Theme.Accent, 1.5)
+	avStroke.Parent = avatar
+	bindAccent(avStroke, "Color")
+end
+task.spawn(function()
+	local ok, img = pcall(function()
+		return Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size100x100)
+	end)
+	if ok then avatar.Image = img end
+end)
+create("TextLabel", {
+	BackgroundTransparency = 1, Position = UDim2.new(0, 48, 0, 10), Size = UDim2.new(1, -54, 0, 18),
+	Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+	TextXAlignment = Enum.TextXAlignment.Left, Text = player.DisplayName, Parent = profile,
+})
+create("TextLabel", {
+	BackgroundTransparency = 1, Position = UDim2.new(0, 48, 0, 28), Size = UDim2.new(1, -54, 0, 14),
+	Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+	TextXAlignment = Enum.TextXAlignment.Left, Text = "@" .. player.Name, Parent = profile,
+})
+
+--// Content area
+local content = create("Frame", {
+	Name = "Content", BackgroundTransparency = 1,
+	Position = UDim2.new(0, SIDEBAR, 0, 0), Size = UDim2.new(1, -SIDEBAR, 1, 0), Parent = body,
+})
+
+--// ลายน้ำหยินหยางหมุนช้าๆ (แสดงเฉพาะสไตล์หยิน/หยาง)
+do
+	local watermark = create("Frame", {
+		Name = "Watermark", BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -8, 1, -8), Size = UDim2.new(0, 150, 0, 150), Visible = false, ZIndex = 0, Parent = content,
+	})
+	local wmYY = buildYinYang(watermark)
+	for _, d in ipairs(wmYY:GetDescendants()) do
+		if d:IsA("Frame") then d.BackgroundTransparency = 0.9 end
+		if d:IsA("UIStroke") then d.Transparency = 0.92 end
+	end
+	table.insert(animHooks, function(t)
+		if watermark.Visible then wmYY.Rotation = (t * 12) % 360 end
+	end)
+	setDeco = function(on) watermark.Visible = (on == true or on == "yy") end
+end
+--// มังกรจีนเลื้อยเป็นพื้นหลัง: ลำตัวเป็นเกล็ด มีหนามสันหลัง ขา เล็บ หางเป็นเปลว ไข่มุก และเมฆ (วาดจากกรอบ ไม่ใช้รูป)
+do
+	local dragon = create("Frame", {
+		Name = "Dragon", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), Visible = false,
+		ZIndex = 0, ClipsDescendants = true, Parent = content,
+	})
+	local big = create("TextLabel", {
+		BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -6, 1, -2),
+		Size = UDim2.new(0, 150, 0, 150), Text = "龍", TextScaled = true, TextColor3 = DR.gold,
+		TextTransparency = 0.88, ZIndex = 0, Parent = dragon,
+	})
+	big:SetAttribute("nofont", true)
+	big:SetAttribute("notr", true)
+	-- เมฆมงคล
+	local clouds = {}
+	for i = 1, 3 do
+		local g = create("Frame", {BackgroundTransparency = 1, Size = UDim2.fromOffset(90, 40), ZIndex = 0, Parent = dragon})
+		for k = 0, 2 do
+			create("Frame", {
+				BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.9, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(k * 26, k == 1 and 0 or 10), Size = UDim2.fromOffset(38, k == 1 and 36 or 28), Parent = g,
+			}, {round()})
+		end
+		clouds[i] = {f = g, y = 0.15 + i * 0.25, sp = 6 + i * 3, x0 = i * 150}
+	end
+	local SEG = 34
+	local segs = {}
+	local legAt = {[8] = true, [13] = true, [21] = true, [26] = true}
+	for i = 1, SEG do
+		local f = create("Frame", {
+			AnchorPoint = Vector2.new(0.5, 0.5), BackgroundColor3 = DR.jade, BackgroundTransparency = 0.18,
+			BorderSizePixel = 0, ZIndex = SEG - i, Parent = dragon,
+		}, {round()})
+		create("Frame", { -- ท้องสีทองอ่อน
+			AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.7, 0), Size = UDim2.new(0.62, 0, 0.42, 0),
+			BackgroundColor3 = DR.pale, BackgroundTransparency = 0.25, BorderSizePixel = 0, Parent = f,
+		}, {round()})
+		create("Frame", { -- เกล็ดนูน
+			AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.3, 0), Size = UDim2.new(0.38, 0, 0.3, 0),
+			BackgroundColor3 = DR.jade2, BackgroundTransparency = 0.35, BorderSizePixel = 0, Parent = f,
+		}, {round()})
+		if i > 2 and i % 2 == 1 and i < SEG - 1 then -- หนามสันหลัง
+			create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, -0.02, 0), Size = UDim2.new(0.32, 0, 0.32, 0),
+				Rotation = 45, BackgroundColor3 = i % 4 == 1 and DR.red or DR.gold, BorderSizePixel = 0, Parent = f,
+			})
+		end
+		if legAt[i] then -- ขา + เล็บ 3 นิ้ว
+			local leg = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0.85, 0), Size = UDim2.new(0.3, 0, 0.9, 0),
+				Rotation = (i % 2 == 0) and 18 or -18, BackgroundColor3 = DR.jade2, BorderSizePixel = 0, ZIndex = 0, Parent = f,
+			}, {create("UICorner", {CornerRadius = UDim.new(0.5, 0)})})
+			for c = -1, 1 do
+				create("Frame", {
+					AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5 + c * 0.38, 0, 1, 0), Size = UDim2.new(0.22, 0, 0.3, 0),
+					Rotation = c * 25, BackgroundColor3 = DR.gold, BorderSizePixel = 0, Parent = leg,
+				}, {round()})
+			end
+		end
+		if i == SEG then -- หางเป็นเปลว
+			for c = -1, 1 do
+				create("Frame", {
+					AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0.6, 0, 0.5, 0), Size = UDim2.new(2.2, 0, 0.45, 0),
+					Rotation = 160 + c * 28, BackgroundColor3 = c == 0 and DR.gold or DR.red, BorderSizePixel = 0, Parent = f,
+				}, {create("UICorner", {CornerRadius = UDim.new(0.5, 0)})})
+			end
+		end
+		segs[i] = f
+	end
+	local head = buildDragonHead(dragon, UDim2.fromOffset(96, 96))
+	head.ZIndex = SEG + 2
+	for _, d in ipairs(head:GetChildren()) do d.ZIndex += SEG end
+	-- ไข่มุกมังกร
+	local halo = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(44, 44), BackgroundColor3 = DR.gold,
+		BackgroundTransparency = 0.8, BorderSizePixel = 0, ZIndex = SEG + 1, Parent = dragon,
+	}, {round()})
+	local pearl = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.fromOffset(22, 22),
+		BackgroundColor3 = DR.pale, BorderSizePixel = 0, Parent = halo,
+	}, {round(), create("UIGradient", {Color = ColorSequence.new(Color3.new(1, 1, 1), DR.gold), Rotation = 45})})
+
+	local px = {}
+	table.insert(animHooks, function(t)
+		if not dragon.Visible then return end
+		local W, H = dragon.AbsoluteSize.X, dragon.AbsoluteSize.Y
+		if W < 20 then return end
+		for i, f in ipairs(segs) do
+			local u = (i - 1) / (SEG - 1)
+			local x = (0.70 - 0.62 * u + 0.035 * math.sin(t * 0.7 + u * 3)) * W
+			local y = (0.52 + 0.26 * math.sin(t * 0.9 + u * 6.5)) * H
+			px[i] = Vector2.new(x, y)
+			f.Position = UDim2.fromOffset(x, y)
+			local d = 30 * (1 - 0.72 * u) + 5
+			f.Size = UDim2.fromOffset(d, d)
+			f.BackgroundColor3 = DR.jade:Lerp(DR.jade2, u * 0.7)
+		end
+		-- หัวหันไปตามทิศที่เลื้อย
+		local dir = px[1] - px[3]
+		head.Position = UDim2.fromOffset(px[1].X + 14, px[1].Y)
+		head.Rotation = math.deg(math.atan2(dir.Y, dir.X))
+		halo.Position = UDim2.fromOffset(px[1].X + 78 + math.sin(t * 1.6) * 6, px[1].Y + math.cos(t * 1.3) * 14)
+		halo.BackgroundTransparency = 0.72 + 0.12 * math.sin(t * 3)
+		for _, c in ipairs(clouds) do
+			c.f.Position = UDim2.fromOffset(((c.x0 - t * c.sp) % (W + 140)) - 100, c.y * H)
+		end
+	end)
+	local prev = setDeco
+	setDeco = function(on)
+		if prev then prev(on) end
+		dragon.Visible = on == "dragon"
+	end
+	--// การ์ดโปร่งขึ้นเล็กน้อยในสไตล์มังกร เพื่อให้เห็นตัวมังกร
+	table.insert(themeHooks, function()
+		for i = #depthObjs, 1, -1 do
+			local c = depthObjs[i].grad.Parent
+			if c then c.BackgroundTransparency = currentStyle == "dragon" and 0.3 or 0 end
+		end
+	end)
+end
+
+--// ===== ปุ่มลอย เปิด/ปิด GUI =====
+local minimized = false
+local hubOpen = true
+
+local floatRoot = create("Frame", {
+	Name = "HubToggleRoot", AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 16, 0.45, 0),
+	Size = UDim2.new(0, 52, 0, 52), BackgroundTransparency = 1, ZIndex = 5, Parent = gui,
+})
+addShadow(floatRoot, {spread = 12, offset = 4, layers = 6, round = true, alpha = 0.7})
+local floatBtn = create("TextButton", {
+	Name = "HubToggle", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0),
+	Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = Theme.Surface, Text = "",
+	AutoButtonColor = false, ZIndex = 5, Parent = floatRoot,
+}, {round()})
+do
+	local fs = stroke(Theme.Accent, 2)
+	fs.Parent = floatBtn
+	bindAccent(fs, "Color")
+end
+makeLogo(floatBtn, UDim2.new(0, 38, 0, 38))
+local statusDot = create("Frame", {
+	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -1, 0, 1), Size = UDim2.new(0, 14, 0, 14),
+	BackgroundColor3 = Theme.Good, ZIndex = 7, Parent = floatRoot,
+}, {round(), stroke(Theme.Surface, 2)})
+
+local function fullSize()
+	return minimized and UDim2.new(0, WIDTH, 0, 44) or UDim2.new(0, WIDTH, 0, HEIGHT)
+end
+local function setHub(open)
+	hubOpen = open
+	tween(statusDot, 0.2, {BackgroundColor3 = open and Theme.Good or Theme.Bad})
+	if open then
+		main.Visible = true
+		tween(main, 0.35, {Size = fullSize()}, Enum.EasingStyle.Back)
+	else
+		tween(main, 0.25, {Size = UDim2.new(0, 0, 0, 0)}, Enum.EasingStyle.Back, Enum.EasingDirection.In)
+		task.delay(0.27, function()
+			if not hubOpen then main.Visible = false end
+		end)
+	end
+end
+
+do -- ลากปุ่มลอยได้ / แตะเพื่อเปิด-ปิด
+	local dragging, moved, startInput, startPos = false, false, nil, nil
+	floatBtn.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragging, moved, startInput, startPos = true, false, input.Position, floatRoot.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					if dragging and not moved then setHub(not hubOpen) end
+					dragging = false
+				end
+			end)
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+			local d = input.Position - startInput
+			if d.Magnitude > 6 then moved = true end
+			if moved then
+				floatRoot.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+			end
+		end
+	end)
+	floatBtn.MouseEnter:Connect(function() tween(floatBtn, 0.15, {Size = UDim2.new(1.12, 0, 1.12, 0)}) end)
+	floatBtn.MouseLeave:Connect(function() tween(floatBtn, 0.15, {Size = UDim2.new(1, 0, 1, 0)}) end)
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == Enum.KeyCode.RightShift then setHub(not hubOpen) end
+end)
+
+--// Tab system
+local pages, tabButtons, currentTab = {}, {}, nil
+
+local function createPage(name)
+	local page = create("ScrollingFrame", {
+		Name = name, BackgroundTransparency = 1, Visible = false,
+		Size = UDim2.new(1, 0, 1, 0), CanvasSize = UDim2.new(0, 0, 0, 0),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 3,
+		ScrollBarImageColor3 = Theme.Accent, BorderSizePixel = 0, Parent = content,
+	}, {
+		padding(14),
+		create("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder}),
+	})
+	bindAccent(page, "ScrollBarImageColor3")
+	pages[name] = page
+	return page
+end
+
+local function selectTab(name)
+	if currentTab == name then return end
+	currentTab = name
+	for n, page in pairs(pages) do
+		if n == name then
+			page.Visible = true
+			page.Position = UDim2.new(0, 0, 0, 14)
+			tween(page, 0.3, {Position = UDim2.new(0, 0, 0, 0)}, Enum.EasingStyle.Quint)
+		else
+			page.Visible = false
+		end
+	end
+	for n, t in pairs(tabButtons) do
+		local active = n == name
+		tween(t.button, 0.2, {BackgroundTransparency = active and 0 or 1})
+		tween(t.label, 0.2, {TextColor3 = active and Theme.Text or Theme.SubText})
+		tween(t.bar, 0.25, {Size = UDim2.new(0, 3, 0, active and 18 or 0)})
+	end
+end
+
+table.insert(themeHooks, function()
+	for n, t in pairs(tabButtons) do
+		t.label.TextColor3 = (n == currentTab) and Theme.Text or Theme.SubText
+	end
+end)
+
+local tabOrder = 0
+local function createTab(name, icon)
+	tabOrder += 1
+	local btn = create("TextButton", {
+		BackgroundColor3 = Theme.Surface2, BackgroundTransparency = 1,
+		Size = UDim2.new(1, 0, 0, 34), Text = "", AutoButtonColor = false,
+		LayoutOrder = tabOrder, Parent = tabList,
+	}, {corner(8)})
+	local bar = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0),
+		Size = UDim2.new(0, 3, 0, 0), BorderSizePixel = 0, Parent = btn,
+	}, {corner(2)})
+	bindAccent(bar, "BackgroundColor3")
+	create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 10, 0, 0), Size = UDim2.new(0, 20, 1, 0),
+		Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Theme.Text, Text = icon, Parent = btn,
+	})
+	local label = create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 34, 0, 0), Size = UDim2.new(1, -36, 1, 0),
+		Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = Theme.SubText,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = name, Parent = btn,
+	})
+	tabButtons[name] = {button = btn, label = label, bar = bar}
+	btn.MouseEnter:Connect(function()
+		if currentTab ~= name then tween(btn, 0.15, {BackgroundTransparency = 0.6}) end
+	end)
+	btn.MouseLeave:Connect(function()
+		if currentTab ~= name then tween(btn, 0.15, {BackgroundTransparency = 1}) end
+	end)
+	btn.MouseButton1Click:Connect(function() selectTab(name) end)
+	return createPage(name)
+end
+
+--// ===== Components =====
+local order = 0
+local function nextOrder() order += 1 return order end
+
+local function Section(parent, text)
+	local l = create("TextLabel", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 22), LayoutOrder = nextOrder(),
+		Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.SubText,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = string.upper(T(text)), Parent = parent,
+	})
+	l:SetAttribute("o", text)
+	l:SetAttribute("u", true)
+	return l
+end
+
+--// การ์ดพร้อมมิติ: ไล่เฉด + ไฮไลต์ขอบบน + เงาด้านล่าง
+local function card(parent, height)
+	local c = create("Frame", {
+		BackgroundColor3 = Theme.Surface, Size = UDim2.new(1, 0, 0, height or 48),
+		LayoutOrder = nextOrder(), ClipsDescendants = true, Parent = parent,
+	}, {corner(10), stroke(Theme.Stroke)})
+	local grad = create("UIGradient", {
+		Color = ColorSequence.new(Color3.new(1, 1, 1), Color3.fromRGB(214, 214, 222)), Rotation = 90, Parent = c,
+	})
+	local hi = create("Frame", {
+		Name = "Hi", BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.86,
+		Size = UDim2.new(1, -20, 0, 1), Position = UDim2.new(0, 10, 0, 0), BorderSizePixel = 0, ZIndex = 2, Parent = c,
+	})
+	local lo = create("Frame", {
+		Name = "Lo", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.8,
+		AnchorPoint = Vector2.new(0, 1), Size = UDim2.new(1, 0, 0, 2), Position = UDim2.new(0, 0, 1, 0),
+		BorderSizePixel = 0, ZIndex = 2, Parent = c,
+	})
+	hi.Visible, lo.Visible, grad.Enabled = depthOn, depthOn, depthOn
+	table.insert(depthObjs, {hi = hi, lo = lo, grad = grad})
+	return c
+end
+
+local function titleDesc(parent, name, desc, width)
+	create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, desc and 5 or 0),
+		Size = UDim2.new(width or 1, -28, 0, desc and 18 or 48),
+		Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = name, Parent = parent,
+	})
+	if desc then
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 23), Size = UDim2.new(width or 1, -28, 0, 24),
+			Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = Theme.SubText, TextWrapped = true,
+			TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top, Text = desc, Parent = parent,
+		})
+	end
+end
+
+--// กล่องเก็บคอมโพเนนต์ที่ซ่อน/แสดงได้
+local function Container(parent)
+	return create("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = nextOrder(), Parent = parent,
+	}, {create("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder})})
+end
+
+--// ป้ายข้อความ: ความสูงปรับตามข้อความ (รองรับทุกภาษา)
+local function Label(parent, text, height)
+	local c = card(parent, height or 40)
+	local l = create("TextLabel", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, -28, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+		Position = UDim2.new(0, 14, 0, 10), Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.SubText,
+		TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+		Text = text, Parent = c,
+	})
+	local function fit()
+		if l.AbsoluteSize.Y > 0 then c.Size = UDim2.new(1, 0, 0, math.max(32, l.AbsoluteSize.Y + 20)) end
+	end
+	l:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	task.defer(fit)
+	return l
+end
+
+local function Button(parent, name, desc, callback, btnText)
+	local c = card(parent, 48)
+	titleDesc(c, name, desc, 0.6)
+	local b = create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.new(0, 92, 0, 28),
+		Font = Enum.Font.GothamBold, TextSize = 12, TextTruncate = Enum.TextTruncate.AtEnd,
+		Text = btnText or "Run", AutoButtonColor = false, Parent = c,
+	}, {corner(8)})
+	bindAccent(b, "BackgroundColor3")
+	bindOnAccent(b, "TextColor3")
+	b.MouseButton1Click:Connect(function()
+		tween(b, 0.08, {Size = UDim2.new(0, 86, 0, 25)}).Completed:Connect(function()
+			tween(b, 0.12, {Size = UDim2.new(0, 92, 0, 28)}, Enum.EasingStyle.Back)
+		end)
+		if callback then task.spawn(callback) end
+	end)
+end
+
+local function Toggle(parent, name, desc, default, callback)
+	local c = card(parent, 48)
+	titleDesc(c, name, desc, 0.75)
+	local state = default or false
+	local trackBtn = create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -14, 0.5, 0), Size = UDim2.new(0, 42, 0, 22),
+		BackgroundColor3 = Theme.Surface2, Text = "", AutoButtonColor = false, Parent = c,
+	}, {round(), stroke(Theme.Stroke)})
+	local knob = create("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5), Size = UDim2.new(0, 16, 0, 16), BackgroundColor3 = Theme.SubText,
+		Position = state and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0), Parent = trackBtn,
+	}, {round()})
+	local function paint(animate)
+		local tc = state and Theme.Accent or Theme.Surface2
+		local kc = state and Theme.OnAccent or Theme.SubText
+		trackBtn:SetAttribute("t_BackgroundColor3", nil)
+		knob:SetAttribute("t_BackgroundColor3", nil)
+		if animate then
+			tween(trackBtn, 0.2, {BackgroundColor3 = tc})
+			tween(knob, 0.2, {BackgroundColor3 = kc})
+		else
+			trackBtn.BackgroundColor3, knob.BackgroundColor3 = tc, kc
+		end
+	end
+	paint(false)
+	table.insert(accentHooks, function() if state then paint(false) end end)
+	table.insert(themeHooks, function() paint(false) end)
+	local function set(v, fire)
+		if state == v and not fire then return end
+		state = v
+		paint(true)
+		tween(knob, 0.2, {Position = v and UDim2.new(1, -19, 0.5, 0) or UDim2.new(0, 3, 0.5, 0)}, Enum.EasingStyle.Back)
+		if callback then task.spawn(callback, v) end
+	end
+	trackBtn.MouseButton1Click:Connect(function() set(not state, true) end)
+	return {Set = function(v) set(v) end, Get = function() return state end}
+end
+
+local function Slider(parent, name, min, max, default, callback, suffix)
+	local c = card(parent, 58)
+	suffix = suffix or ""
+	local value = default or min
+	titleDesc(c, name, nil, 0.7)
+	c:FindFirstChildOfClass("TextLabel").Size = UDim2.new(0.7, -28, 0, 28)
+	local function fmt(v) return tostring(math.floor(v * 10 + 0.5) / 10) .. suffix end
+	local valLabel = create("TextLabel", {
+		BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 0),
+		Size = UDim2.new(0.3, 0, 0, 28), Font = Enum.Font.GothamBold, TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Right, Text = fmt(value), Parent = c,
+	})
+	valLabel:SetAttribute("notr", true)
+	bindAccent(valLabel, "TextColor3")
+	local track = create("Frame", {
+		BackgroundColor3 = Theme.Surface2, Position = UDim2.new(0, 14, 0, 38), Size = UDim2.new(1, -28, 0, 6), Parent = c,
+	}, {round()})
+	local fill = create("Frame", {Size = UDim2.new((value - min) / (max - min), 0, 1, 0), Parent = track}, {round()})
+	bindAccent(fill, "BackgroundColor3")
+	local knob = create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.new(0, 14, 0, 14),
+		BackgroundColor3 = Color3.new(1, 1, 1), Parent = fill,
+	}, {round()})
+	local ks = stroke(Theme.Accent, 2)
+	ks.Parent = knob
+	bindAccent(ks, "Color")
+
+	local function setValue(v, fire)
+		value = math.clamp(v, min, max)
+		valLabel.Text = fmt(value)
+		tween(fill, 0.06, {Size = UDim2.new((value - min) / (max - min), 0, 1, 0)})
+		if fire and callback then callback(value) end
+	end
+	local dragging = false
+	local function update(x)
+		local rel = math.clamp((x - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+		setValue(math.floor(min + (max - min) * rel + 0.5), true)
+	end
+	c.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = true
+			update(i.Position.X)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(i)
+		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			update(i.Position.X)
+		end
+	end)
+	return {Set = function(v) setValue(v, false) end, Get = function() return value end}
+end
+
+local function Dropdown(parent, name, options, default, callback)
+	local ROW, HEAD = 28, 48
+	local c = card(parent, HEAD)
+	titleDesc(c, name, nil, 0.5)
+	local first = default or options[1]
+	local selected = create("TextLabel", {
+		BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -36, 0, 0),
+		Size = UDim2.new(0.5, 0, 0, HEAD), Font = Enum.Font.GothamBold, TextSize = 12,
+		TextXAlignment = Enum.TextXAlignment.Right, TextTruncate = Enum.TextTruncate.AtEnd, Text = T(first), Parent = c,
+	})
+	selected:SetAttribute("o", first)
+	bindAccent(selected, "TextColor3")
+	local arrow = create("TextLabel", {
+		BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -12, 0, 0),
+		Size = UDim2.new(0, 20, 0, HEAD), Font = Enum.Font.GothamBold, TextSize = 12,
+		TextColor3 = Theme.SubText, Text = "▼", Parent = c,
+	})
+	arrow:SetAttribute("nofont", true)
+	local headBtn = create("TextButton", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, HEAD), Text = "", Parent = c,
+	})
+	local list = create("Frame", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, HEAD), Size = UDim2.new(1, -16, 0, #options * ROW), Parent = c,
+	}, {create("UIListLayout", {Padding = UDim.new(0, 0)})})
+	local open = false
+	local function toggleOpen()
+		open = not open
+		tween(c, 0.25, {Size = UDim2.new(1, 0, 0, open and (HEAD + #options * ROW + 8) or HEAD)}, Enum.EasingStyle.Quint)
+		tween(arrow, 0.25, {Rotation = open and 180 or 0})
+	end
+	for _, opt in ipairs(options) do
+		local o = create("TextButton", {
+			BackgroundColor3 = Theme.Surface2, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, ROW),
+			Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.Text, Text = T(opt),
+			TextXAlignment = Enum.TextXAlignment.Left, AutoButtonColor = false, Parent = list,
+		}, {corner(6), create("UIPadding", {PaddingLeft = UDim.new(0, 10)})})
+		o:SetAttribute("o", opt)
+		o.MouseEnter:Connect(function() tween(o, 0.12, {BackgroundTransparency = 0}) end)
+		o.MouseLeave:Connect(function() tween(o, 0.12, {BackgroundTransparency = 1}) end)
+		o.MouseButton1Click:Connect(function()
+			selected.Text = T(opt)
+			selected:SetAttribute("o", opt)
+			if open then toggleOpen() end
+			if callback then callback(opt) end
+		end)
+	end
+	headBtn.MouseButton1Click:Connect(toggleOpen)
+	return {Set = function(opt) selected.Text = T(opt) selected:SetAttribute("o", opt) end}
+end
+
+local function TextBox(parent, name, placeholder, callback)
+	local c = card(parent, 48)
+	titleDesc(c, name, nil, 0.5)
+	local box = create("TextBox", {
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0), Size = UDim2.new(0.45, 0, 0, 28),
+		BackgroundColor3 = Theme.Surface2, Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.Text,
+		PlaceholderText = T(placeholder or "พิมพ์ที่นี่..."), PlaceholderColor3 = Theme.SubText,
+		Text = "", ClearTextOnFocus = false, Parent = c,
+	}, {corner(8), padding(6)})
+	box:SetAttribute("op", placeholder or "พิมพ์ที่นี่...")
+	local st = stroke(Theme.Stroke)
+	st.Parent = box
+	box.Focused:Connect(function() tween(st, 0.15, {Color = Theme.Accent}) end)
+	box.FocusLost:Connect(function(enter)
+		tween(st, 0.15, {Color = Theme.Stroke})
+		if callback then callback(box.Text, enter) end
+	end)
+end
+
+--// กริดตัวเลือก (ใช้กับพรีเซ็ต Shader และวัสดุบล็อค)
+local function Grid(parent, columns, cellHeight)
+	return create("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+		LayoutOrder = nextOrder(), Parent = parent,
+	}, {create("UIGridLayout", {
+		CellSize = UDim2.new(1 / columns, -(8 * (columns - 1)) / columns, 0, cellHeight),
+		CellPadding = UDim2.new(0, 8, 0, 8), SortOrder = Enum.SortOrder.LayoutOrder,
+	})})
+end
+
+--// =====================================================
+--//                      ENGINES
+--// =====================================================
+
+--// ตัววัด FPS (ใช้ร่วมทุกแท็บ)
+local fpsNow = 60
+do
+local fCount, fAcc = 0, 0
+RunService.RenderStepped:Connect(function(dt)
+	fCount += 1
+	fAcc += dt
+	if fAcc >= 0.25 then
+		fpsNow = math.floor(fCount / fAcc + 0.5)
+		fCount, fAcc = 0, 0
+	end
+end)
+end
+
+local function eachDescendant(fn)
+	local list = Workspace:GetDescendants()
+	for i, d in ipairs(list) do
+		fn(d)
+		if i % 400 == 0 then task.wait() end
+	end
+end
+
+local function isCharPart(d)
+	local anc = d.Parent
+	while anc and anc ~= Workspace do
+		if anc:FindFirstChildOfClass("Humanoid") then return true end
+		anc = anc.Parent
+	end
+	return false
+end
+
+local function isBlock(d)
+	return d:IsA("BasePart") and not d:IsA("Terrain") and d.Transparency < 1 and not isCharPart(d)
+end
+
+local function getRoot()
+	local ch = player.Character
+	return ch and ch:FindFirstChild("HumanoidRootPart")
+end
+
+--// ---------- Lighting เดิม (สำหรับคืนค่า) ----------
+local orig = {
+	ClockTime = Lighting.ClockTime,
+	Brightness = Lighting.Brightness,
+	Exposure = Lighting.ExposureCompensation,
+	GlobalShadows = Lighting.GlobalShadows,
+	Ambient = Lighting.Ambient,
+	OutdoorAmbient = Lighting.OutdoorAmbient,
+	Diffuse = Lighting.EnvironmentDiffuseScale,
+	Specular = Lighting.EnvironmentSpecularScale,
+	Soft = Lighting.ShadowSoftness,
+}
+
+--// ค่าที่แชร์ระหว่างส่วนต่างๆ (กราฟ FPS, หน้าต่างลอย, ชั้นเอฟเฟกต์ Shader)
+local ext = {hud = {}, fx = {}, fxs = {ptype = "None", pcolor = nil, storm = false}, fullbright = false}
+
+--// ---------- SHADER ENGINE ----------
+local function getOrCreate(class, name)
+	local e = Lighting:FindFirstChild(name)
+	if not e or not e:IsA(class) then
+		e = Instance.new(class)
+		e.Name = name
+		e.Parent = Lighting
+	end
+	return e
+end
+
+local fx = {
+	cc    = getOrCreate("ColorCorrectionEffect", "NovaCC"),
+	bloom = getOrCreate("BloomEffect", "NovaBloom"),
+	rays  = getOrCreate("SunRaysEffect", "NovaRays"),
+	dof   = getOrCreate("DepthOfFieldEffect", "NovaDoF"),
+	blur  = getOrCreate("BlurEffect", "NovaBlur"),
+}
+for _, e in pairs(fx) do e.Enabled = false end
+fx.blur.Size = 0
+
+local atmos = Lighting:FindFirstChildOfClass("Atmosphere")
+local atmosMine = false
+local atmosOrig
+if atmos then
+	atmosOrig = {Density = atmos.Density, Offset = atmos.Offset, Color = atmos.Color, Decay = atmos.Decay, Glare = atmos.Glare, Haze = atmos.Haze}
+else
+	atmos = Instance.new("Atmosphere")
+	atmos.Name = "NovaAtmos"
+	atmos.Density, atmos.Haze, atmos.Glare = 0, 0, 0
+	atmos.Parent = Lighting
+	atmosMine = true
+end
+
+local DEFAULT = {
+	Bright = 0, Contrast = 0, Sat = 0, R = 255, G = 255, B = 255,
+	Bloom = 0, BloomSize = 24, Rays = 0, Density = 0, Haze = 0,
+	Exposure = 0, DoF = 0, Blur = 0, Time = math.floor(orig.ClockTime * 10 + 0.5) / 10,
+	Light = math.floor(orig.Brightness * 10 + 0.5), Soft = math.floor(orig.Soft * 100 + 0.5), Amb = 0,
+	Refl = math.floor(orig.Specular * 100 + 0.5), SkyHue = 210, SkySat = 0,
+	Vig = 0, Letter = 0, Grain = 0, Scan = 0, WashHue = 210, WashAmt = 0,
+	PAmt = 60, PSpd = 100, Cycle = 0, HueCycle = 0, Pulse = 0,
+}
+local S = {}
+for k, v in pairs(DEFAULT) do S[k] = v end
+
+local shaderOn = false
+local curPreset = nil
+
+local function applyShader()
+	if not shaderOn then
+		for _, e in pairs(fx) do e.Enabled = false end
+		fx.blur.Size = 0
+		Lighting.ClockTime = orig.ClockTime
+		Lighting.ExposureCompensation = orig.Exposure
+		Lighting.Brightness = orig.Brightness
+		Lighting.ShadowSoftness = orig.Soft
+		if not ext.fullbright then
+			Lighting.Ambient = orig.Ambient
+			Lighting.OutdoorAmbient = orig.OutdoorAmbient
+		end
+		if not (boostState and boostState.shadows) then Lighting.EnvironmentSpecularScale = orig.Specular end
+		if atmosMine then
+			atmos.Density, atmos.Haze, atmos.Glare = 0, 0, 0
+		else
+			for k, v in pairs(atmosOrig) do atmos[k] = v end
+		end
+		ext.fx.apply(false)
+		return
+	end
+	local tint = Color3.fromRGB(S.R, S.G, S.B)
+	fx.cc.Brightness = S.Bright / 100
+	fx.cc.Contrast = S.Contrast / 100
+	fx.cc.Saturation = S.Sat / 100
+	fx.cc.TintColor = tint
+	fx.cc.Enabled = true
+
+	fx.bloom.Intensity = S.Bloom / 100
+	fx.bloom.Size = S.BloomSize
+	fx.bloom.Threshold = 0.8
+	fx.bloom.Enabled = S.Bloom > 0
+
+	fx.rays.Intensity = S.Rays / 100
+	fx.rays.Spread = 0.6
+	fx.rays.Enabled = S.Rays > 0
+
+	fx.dof.FarIntensity = S.DoF / 100
+	fx.dof.NearIntensity = 0
+	fx.dof.FocusDistance = 60
+	fx.dof.InFocusRadius = 40
+	fx.dof.Enabled = S.DoF > 0
+
+	fx.blur.Size = S.Blur
+	fx.blur.Enabled = S.Blur > 0
+
+	--// ท้องฟ้า/หมอก: ถ้าเลือกสีท้องฟ้าจะใช้โทนนั้น ไม่งั้นใช้โทนสีหลักของ Shader
+	local white, black = Color3.new(1, 1, 1), Color3.new(0, 0, 0)
+	atmos.Density = S.Density / 100
+	atmos.Haze = S.Haze / 10
+	atmos.Glare = S.Haze / 25
+	atmos.Offset = 0.25
+	if S.SkySat > 0 then
+		atmos.Color = Color3.fromHSV((S.SkyHue % 360) / 360, math.clamp(S.SkySat / 100, 0, 1), 1)
+		atmos.Decay = Color3.fromHSV((S.SkyHue % 360) / 360, math.clamp(S.SkySat / 100 + 0.1, 0, 1), 0.55)
+	else
+		atmos.Color = tint:Lerp(white, 0.5)
+		atmos.Decay = tint:Lerp(black, 0.4)
+	end
+
+	Lighting.ClockTime = S.Time
+	Lighting.ExposureCompensation = S.Exposure / 10
+	Lighting.Brightness = S.Light / 10
+	Lighting.ShadowSoftness = math.clamp(S.Soft / 100, 0, 1)
+	if not ext.fullbright then
+		if S.Amb > 0 then
+			Lighting.Ambient = tint:Lerp(black, 1 - S.Amb / 100 * 0.55)
+			Lighting.OutdoorAmbient = tint:Lerp(black, 1 - S.Amb / 100 * 0.4)
+		else
+			Lighting.Ambient = orig.Ambient
+			Lighting.OutdoorAmbient = orig.OutdoorAmbient
+		end
+	end
+	if not (boostState and boostState.shadows) then
+		Lighting.EnvironmentSpecularScale = math.clamp(S.Refl / 100, 0, 1)
+	end
+	ext.fx.apply(true)
+end
+
+--// ---------- ชั้นเอฟเฟกต์บนหน้าจอ ----------
+--// ขอบมืด แถบหนัง เม็ดฟิล์ม เส้นสแกน สีเคลือบจอ อนุภาค (หิมะ ฝน ซากุระ หิ่งห้อย ถ่านไฟ ดาว เมทริกซ์ ฟอง) และฟ้าแลบ
+--// วาดจาก Frame ใน ScreenGui แยกชื่อ NovaFX (ไม่ใช้รูป) เห็นเฉพาะฝั่งเรา
+;(function()
+	do
+		local o = player.PlayerGui:FindFirstChild("NovaFX")
+		if o then o:Destroy() end
+	end
+	local fxGui = create("ScreenGui", {
+		Name = "NovaFX", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = -10,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Parent = player:WaitForChild("PlayerGui"),
+	})
+	gui.Destroying:Connect(function() fxGui:Destroy() end)
+	local FS = ext.fxs
+	local function rnd(a, b) return a + math.random() * (b - a) end
+	local BLACK, WHITE = Color3.new(0, 0, 0), Color3.new(1, 1, 1)
+	local function layerFrame(z, vis)
+		return create("Frame", {
+			BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0), ZIndex = z,
+			Visible = vis ~= false, Parent = fxGui,
+		})
+	end
+
+	--// สีเคลือบจอ
+	local wash = create("Frame", {
+		BackgroundColor3 = WHITE, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0),
+		ZIndex = 1, Parent = fxGui,
+	})
+	local washGrad = create("UIGradient", {Rotation = 40, Parent = wash})
+	local function setWash(h, amt)
+		wash.BackgroundTransparency = 1 - math.clamp(amt / 100, 0, 1) * 0.5
+		washGrad.Color = ColorSequence.new(
+			Color3.fromHSV((h % 360) / 360, 0.7, 1), Color3.fromHSV(((h + 50) % 360) / 360, 0.7, 1)
+		)
+	end
+
+	--// ขอบมืด
+	local vig = {}
+	local function vedge(pos, size, rot, flip)
+		local f = create("Frame", {
+			BackgroundColor3 = BLACK, BorderSizePixel = 0, Position = pos, Size = size, ZIndex = 2, Parent = fxGui,
+		})
+		table.insert(vig, {g = create("UIGradient", {Rotation = rot, Parent = f}), flip = flip})
+	end
+	vedge(UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 0.4, 0), 90, false)
+	vedge(UDim2.new(0, 0, 0.6, 0), UDim2.new(1, 0, 0.4, 0), 90, true)
+	vedge(UDim2.new(0, 0, 0, 0), UDim2.new(0.34, 0, 1, 0), 0, false)
+	vedge(UDim2.new(0.66, 0, 0, 0), UDim2.new(0.34, 0, 1, 0), 0, true)
+	local function setVig(v)
+		local t0 = 1 - math.clamp(v / 100, 0, 1) * 0.92
+		for _, e in ipairs(vig) do
+			e.g.Transparency = e.flip and NumberSequence.new(1, t0) or NumberSequence.new(t0, 1)
+		end
+	end
+
+	--// เส้นสแกน
+	local scan = layerFrame(3)
+	local scanLines = {}
+	for i = 1, 60 do
+		scanLines[i] = create("Frame", {
+			BackgroundColor3 = BLACK, BackgroundTransparency = 1, BorderSizePixel = 0,
+			Position = UDim2.new(0, 0, (i - 1) / 60, 0), Size = UDim2.new(1, 0, 0.0085, 0), Parent = scan,
+		})
+	end
+	local function setScan(v)
+		for _, l in ipairs(scanLines) do l.BackgroundTransparency = 1 - math.clamp(v / 100, 0, 1) * 0.32 end
+	end
+
+	--// เม็ดฟิล์ม
+	local grain = layerFrame(3)
+	local dots = {}
+	for i = 1, 60 do
+		dots[i] = create("Frame", {
+			BackgroundColor3 = i % 2 == 0 and WHITE or BLACK, BackgroundTransparency = 0.55, BorderSizePixel = 0,
+			Size = UDim2.fromOffset(2, 2), Visible = false, Parent = grain,
+		})
+	end
+	local grainN = 0
+
+	--// แถบหนัง + แฟลชฟ้าแลบ
+	local barTop = create("Frame", {BackgroundColor3 = BLACK, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 0), ZIndex = 5, Parent = fxGui})
+	local barBot = create("Frame", {
+		BackgroundColor3 = BLACK, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, 0), ZIndex = 5, Parent = fxGui,
+	})
+	local flash = create("Frame", {BackgroundColor3 = WHITE, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, 0, 1, 0), ZIndex = 6, Parent = fxGui})
+	local function setLetter(v)
+		local s = UDim2.new(1, 0, math.clamp(v / 100, 0, 0.25), 0)
+		tween(barTop, 0.4, {Size = s})
+		tween(barBot, 0.4, {Size = s})
+	end
+
+	--// อนุภาค
+	local layer = create("Frame", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, 0), ZIndex = 4, ClipsDescendants = true, Parent = fxGui,
+	})
+	local MAXN = {Snow = 70, Rain = 80, Sakura = 45, Fireflies = 36, Embers = 50, Stars = 64, Matrix = 36, Bubbles = 30}
+	local GL = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "X", "Z", "ｱ", "ｲ", "ｳ", "ｴ", "ｵ", "ｶ"}
+	local pool, curKind, curCol = {}, "None", nil
+	local W, H = 1280, 720
+
+	local function matrixText()
+		local t = {}
+		for i = 1, 7 do t[i] = GL[math.random(#GL)] end
+		return table.concat(t, "\n")
+	end
+	local function place(p, anywhere)
+		local k = p.kind
+		if k == "Matrix" then
+			p.x, p.y = rnd(0, W), anywhere and rnd(-100, H) or -110
+			p.f.Text = matrixText()
+		elseif k == "Stars" then
+			p.x, p.y = rnd(0, W), rnd(0, H * 0.7)
+		elseif k == "Embers" or k == "Bubbles" then
+			p.x, p.y = rnd(0, W), anywhere and rnd(0, H) or H + 12
+		elseif k == "Fireflies" then
+			p.x, p.y = rnd(0, W), rnd(H * 0.3, H)
+		else
+			p.x, p.y = rnd(-20, W), anywhere and rnd(0, H) or -14
+		end
+	end
+	local function newP(kind, col)
+		local p = {kind = kind, ph = rnd(0, 6.28), a = rnd(0.6, 1.6), vy = rnd(40, 90), amp = rnd(10, 40)}
+		local f
+		if kind == "Matrix" then
+			f = create("TextLabel", {
+				BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Size = UDim2.fromOffset(14, 108),
+				Font = Enum.Font.Code, TextSize = 14, TextColor3 = col or Color3.fromRGB(70, 255, 130), Text = "", Parent = layer,
+			}, {create("UIGradient", {Transparency = NumberSequence.new(1, 0), Rotation = 90})})
+			f:SetAttribute("nofont", true)
+			f:SetAttribute("notr", true)
+			p.vy = rnd(110, 260)
+		elseif kind == "Rain" then
+			f = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(1, math.floor(rnd(10, 20))), Rotation = 12,
+				BackgroundColor3 = col or Color3.fromRGB(190, 210, 255), BackgroundTransparency = rnd(0.45, 0.72),
+				BorderSizePixel = 0, Parent = layer,
+			})
+			p.vy = rnd(650, 950)
+		elseif kind == "Sakura" then
+			f = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(9, 5), BorderSizePixel = 0,
+				BackgroundColor3 = col or Color3.fromRGB(255, 190, 215), BackgroundTransparency = rnd(0.05, 0.3), Parent = layer,
+			}, {round()})
+			p.vy, p.spin = rnd(35, 70), rnd(-120, 120)
+		elseif kind == "Snow" then
+			local sz = math.floor(rnd(3, 8))
+			f = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(sz, sz), BorderSizePixel = 0,
+				BackgroundColor3 = col or WHITE, BackgroundTransparency = rnd(0.1, 0.45), Parent = layer,
+			}, {round()})
+			p.vy = 25 + sz * 9
+		elseif kind == "Fireflies" then
+			f = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(4, 4), BorderSizePixel = 0,
+				BackgroundColor3 = col or Color3.fromRGB(230, 255, 120), Parent = layer,
+			}, {round(), create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 0), Size = UDim2.new(4, 0, 4, 0),
+				BackgroundColor3 = col or Color3.fromRGB(230, 255, 120), BackgroundTransparency = 0.82, BorderSizePixel = 0,
+			}, {round()})})
+		elseif kind == "Embers" then
+			local sz = math.floor(rnd(2, 5))
+			f = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(sz, sz), Rotation = 45, BorderSizePixel = 0,
+				BackgroundColor3 = col or Color3.fromRGB(255, 150, 60), Parent = layer,
+			})
+			p.vy = rnd(40, 110)
+		elseif kind == "Stars" then
+			local sz = math.floor(rnd(1, 4))
+			f = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(sz, sz), BorderSizePixel = 0,
+				BackgroundColor3 = col or WHITE, Parent = layer,
+			}, {round()})
+		else -- Bubbles
+			local sz = math.floor(rnd(8, 26))
+			f = create("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(sz, sz), BorderSizePixel = 0,
+				BackgroundTransparency = 1, Parent = layer,
+			}, {round(), create("UIStroke", {Color = col or Color3.fromRGB(200, 235, 255), Thickness = 1, Transparency = 0.45})})
+			p.vy = rnd(25, 70)
+		end
+		p.f = f
+		place(p, true)
+		return p
+	end
+	local function rebuild(kind, col)
+		for _, p in ipairs(pool) do p.f:Destroy() end
+		table.clear(pool)
+		curKind, curCol = kind, col
+		if kind == "None" or not MAXN[kind] then return end
+		for i = 1, MAXN[kind] do pool[i] = newP(kind, col) end
+	end
+
+	local function stepP(p, dt, t, spd)
+		local k = p.kind
+		local f = p.f
+		if k == "Snow" then
+			p.y += p.vy * dt * spd
+			p.x += math.sin(t * p.a + p.ph) * p.amp * dt
+			if p.y > H + 10 then place(p, false) end
+		elseif k == "Rain" then
+			p.y += p.vy * dt * spd
+			p.x -= p.vy * 0.2 * dt * spd
+			if p.y > H + 20 or p.x < -20 then place(p, false) p.x = rnd(0, W + 200) end
+		elseif k == "Sakura" then
+			p.y += p.vy * dt * spd
+			p.x += (math.sin(t * p.a + p.ph) * p.amp + 18) * dt * spd
+			f.Rotation = (f.Rotation + p.spin * dt * spd) % 360
+			if p.y > H + 10 or p.x > W + 20 then place(p, false) end
+		elseif k == "Fireflies" then
+			p.x += math.cos(t * p.a * 0.7 + p.ph) * 36 * dt * spd
+			p.y += math.sin(t * p.a * 0.5 + p.ph * 2) * 28 * dt * spd
+			p.x = (p.x % W)
+			p.y = math.clamp(p.y, H * 0.2, H)
+			f.BackgroundTransparency = 0.15 + 0.7 * (0.5 + 0.5 * math.sin(t * 2.2 + p.ph))
+		elseif k == "Embers" then
+			p.y -= p.vy * dt * spd
+			p.x += math.sin(t * p.a + p.ph) * p.amp * dt
+			f.BackgroundTransparency = math.clamp(0.1 + (1 - p.y / H) * 0.9, 0, 0.98)
+			if p.y < -10 then place(p, false) end
+		elseif k == "Stars" then
+			f.BackgroundTransparency = 0.1 + 0.75 * (0.5 + 0.5 * math.sin(t * p.a * 2 + p.ph))
+		elseif k == "Matrix" then
+			p.y += p.vy * dt * spd
+			if p.y > H + 4 then
+				place(p, false)
+			elseif math.random() < dt * 3 then
+				f.Text = matrixText()
+			end
+		else -- Bubbles
+			p.y -= p.vy * dt * spd
+			p.x += math.sin(t * p.a + p.ph) * p.amp * 0.6 * dt
+			if p.y < -30 then place(p, false) end
+		end
+		f.Position = UDim2.fromOffset(p.x, p.y)
+	end
+
+	local function setCount()
+		local n = MAXN[curKind] and math.floor(MAXN[curKind] * math.clamp(S.PAmt / 100, 0, 1) + 0.5) or 0
+		for i, p in ipairs(pool) do p.f.Visible = i <= n end
+	end
+
+	function ext.fx.apply(on)
+		if not on then
+			layer.Visible = false
+			wash.Visible = false
+			grainN = 0
+			for _, d in ipairs(dots) do d.Visible = false end
+			setVig(0)
+			setScan(0)
+			setLetter(0)
+			return
+		end
+		layer.Visible, wash.Visible = true, true
+		setVig(S.Vig)
+		setScan(S.Scan)
+		setLetter(S.Letter)
+		setWash(S.WashHue, S.WashAmt)
+		grainN = math.floor(math.clamp(S.Grain / 100, 0, 1) * 60 + 0.5)
+		for i, d in ipairs(dots) do d.Visible = i <= grainN end
+		if FS.ptype ~= curKind or FS.pcolor ~= curCol then rebuild(FS.ptype or "None", FS.pcolor) end
+		setCount()
+	end
+	setVig(0)
+
+	local grainAcc, stormTimer = 0, rnd(3, 8)
+	track(RunService.Heartbeat:Connect(function(dt)
+		if not shaderOn then return end
+		local t = os.clock()
+		local ab = fxGui.AbsoluteSize
+		if ab.X > 0 then W, H = ab.X, ab.Y end
+		local spd = math.clamp(S.PSpd / 100, 0, 3)
+		if layer.Visible then
+			for _, p in ipairs(pool) do
+				if p.f.Visible then stepP(p, dt, t, spd) end
+			end
+		end
+		if grainN > 0 then
+			grainAcc += dt
+			if grainAcc > 0.07 then
+				grainAcc = 0
+				for i = 1, grainN do dots[i].Position = UDim2.fromOffset(math.random(0, W), math.random(0, H)) end
+			end
+		end
+		if S.Cycle > 0 then
+			S.Time = (S.Time + dt * S.Cycle / 100 * 0.6) % 24
+			Lighting.ClockTime = S.Time
+		end
+		if S.HueCycle > 0 then
+			local c = Color3.fromHSV((t * S.HueCycle * 0.004) % 1, 0.5, 1)
+			fx.cc.TintColor = c
+			atmos.Color = c:Lerp(WHITE, 0.4)
+			atmos.Decay = c:Lerp(BLACK, 0.5)
+		end
+		if S.Pulse > 0 and S.Bloom > 0 then
+			fx.bloom.Intensity = S.Bloom / 100 * (1 + 0.4 * math.sin(t * 2.2) * S.Pulse / 100)
+		end
+		if FS.storm then
+			stormTimer -= dt
+			if stormTimer <= 0 then
+				stormTimer = rnd(3, 9)
+				task.spawn(function()
+					flash.BackgroundTransparency = 0.35
+					tween(flash, 0.3, {BackgroundTransparency = 1})
+					task.wait(0.14)
+					flash.BackgroundTransparency = 0.5
+					tween(flash, 0.4, {BackgroundTransparency = 1})
+				end)
+			end
+		end
+	end))
+end)()
+
+--// ---------- FPS BOOST ENGINE ----------
+local weak = {__mode = "k"}
+local bsaved = {
+	effects = setmetatable({}, weak), particles = setmetatable({}, weak),
+	parts = setmetatable({}, weak), decals = setmetatable({}, weak),
+}
+local boostState = {shadows = false, effects = false, particles = false, water = false, materials = false, textures = false, quality = false}
+local PARTICLES = {ParticleEmitter = true, Trail = true, Beam = true, Fire = true, Smoke = true, Sparkles = true}
+local qualityOrig
+
+--// ค่าที่แชร์ระหว่างกราฟ FPS กับหน้าต่างลอย
+function ext.boostActive()
+	local n = 0
+	for _, v in pairs(boostState) do if v then n += 1 end end
+	return n
+end
+
+local Boost = {}
+
+function Boost.shadows(on)
+	boostState.shadows = on
+	Lighting.GlobalShadows = on and false or orig.GlobalShadows
+	Lighting.EnvironmentSpecularScale = on and 0 or orig.Specular
+end
+
+function Boost.effects(on)
+	boostState.effects = on
+	for _, e in ipairs(Lighting:GetChildren()) do
+		if e:IsA("PostEffect") and string.sub(e.Name, 1, 4) ~= "Nova" then
+			if on then
+				if bsaved.effects[e] == nil then bsaved.effects[e] = e.Enabled end
+				e.Enabled = false
+			elseif bsaved.effects[e] ~= nil then
+				e.Enabled = bsaved.effects[e]
+				bsaved.effects[e] = nil
+			end
+		end
+	end
+end
+
+function Boost.particles(on)
+	boostState.particles = on
+	eachDescendant(function(d)
+		if PARTICLES[d.ClassName] then
+			if on then
+				if bsaved.particles[d] == nil then bsaved.particles[d] = d.Enabled end
+				d.Enabled = false
+			elseif bsaved.particles[d] ~= nil then
+				d.Enabled = bsaved.particles[d]
+				bsaved.particles[d] = nil
+			end
+		end
+	end)
+end
+
+local function boostPart(d, on)
+	if on then
+		if bsaved.parts[d] == nil then
+			bsaved.parts[d] = {Material = d.Material, Reflectance = d.Reflectance, CastShadow = d.CastShadow}
+		end
+		d.Material = Enum.Material.SmoothPlastic
+		d.Reflectance = 0
+		d.CastShadow = false
+	elseif bsaved.parts[d] then
+		local o = bsaved.parts[d]
+		d.Material, d.Reflectance, d.CastShadow = o.Material, o.Reflectance, o.CastShadow
+		bsaved.parts[d] = nil
+	end
+end
+
+function Boost.materials(on)
+	boostState.materials = on
+	eachDescendant(function(d)
+		if d:IsA("BasePart") and not d:IsA("Terrain") and not isCharPart(d) then boostPart(d, on) end
+	end)
+end
+
+local function boostDecal(d, on)
+	if on then
+		if bsaved.decals[d] == nil then bsaved.decals[d] = d.Transparency end
+		d.Transparency = 1
+	elseif bsaved.decals[d] ~= nil then
+		d.Transparency = bsaved.decals[d]
+		bsaved.decals[d] = nil
+	end
+end
+
+function Boost.textures(on)
+	boostState.textures = on
+	eachDescendant(function(d)
+		if d:IsA("Decal") and d.Name ~= "NovaTex" then boostDecal(d, on) end
+	end)
+end
+
+local waterOrig
+function Boost.water(on)
+	boostState.water = on
+	local t = Workspace:FindFirstChildOfClass("Terrain")
+	if not t then return end
+	if on then
+		waterOrig = waterOrig or {WaterWaveSize = t.WaterWaveSize, WaterWaveSpeed = t.WaterWaveSpeed, WaterReflectance = t.WaterReflectance}
+		t.WaterWaveSize, t.WaterWaveSpeed, t.WaterReflectance = 0, 0, 0
+	elseif waterOrig then
+		for k, v in pairs(waterOrig) do t[k] = v end
+	end
+end
+
+function Boost.quality(on)
+	boostState.quality = on
+	local ok = pcall(function()
+		local r = settings().Rendering
+		if on then
+			qualityOrig = qualityOrig or r.QualityLevel
+			r.QualityLevel = Enum.QualityLevel.Level01
+		elseif qualityOrig then
+			r.QualityLevel = qualityOrig
+		end
+	end)
+	if not ok then notify("Graphics", "เกมนี้ไม่อนุญาตให้สคริปต์เปลี่ยนระดับกราฟิก", "bad", 3) end
+end
+
+--// ของที่เกิดใหม่ระหว่างเล่น ให้ใช้ Boost ด้วย
+Workspace.DescendantAdded:Connect(function(d)
+	if boostState.particles and PARTICLES[d.ClassName] then
+		bsaved.particles[d] = d.Enabled
+		d.Enabled = false
+	elseif boostState.textures and d:IsA("Decal") and d.Name ~= "NovaTex" then
+		boostDecal(d, true)
+	elseif boostState.materials and d:IsA("BasePart") and not d:IsA("Terrain") and not isCharPart(d) then
+		boostPart(d, true)
+	end
+end)
+
+--// FPS cap (Roblox ไม่ให้สคริปต์ปกติตั้งค่านี้ ใช้ได้เฉพาะสภาพแวดล้อมที่มี setfpscap)
+local capVal = 60
+local function trySetCap(n)
+	local f
+	local ok, env = pcall(function() return getfenv() end)
+	if ok and type(env) == "table" then f = env.setfpscap end
+	if type(f) == "function" and pcall(f, n) then
+		notify("FPS Limit", TF("ตั้งค่าเป็น %d FPS แล้ว", n), "good", 2.5)
+		return true
+	end
+	notify("FPS Limit", "Roblox ไม่ให้สคริปต์ตั้ง FPS cap จริง จึงใช้เป็นเส้นเป้าหมายในกราฟแทน", "bad", 4)
+	return false
+end
+
+--// ---------- TEXTURE ENGINE ----------
+local texState = {mat = nil, color = nil, useColor = false, near = false, radius = 100, auto = false, tile = 4, id = ""}
+local texOrig = setmetatable({}, weak)
+
+local function inRange(d, rootPos)
+	if not texState.near then return true end
+	if not rootPos then return false end
+	return (d.Position - rootPos).Magnitude <= texState.radius
+end
+
+local function applyMaterialTo(p)
+	if not texOrig[p] then texOrig[p] = {Material = p.Material, Color = p.Color} end
+	p.Material = texState.mat
+	if texState.useColor and texState.color then p.Color = texState.color end
+end
+
+local function applyTextures()
+	if not texState.mat then
+		notify("Texture", "เลือกวัสดุบล็อคก่อน", "bad", 2.5)
+		return
+	end
+	local root = getRoot()
+	local pos = root and root.Position
+	local n = 0
+	eachDescendant(function(d)
+		if isBlock(d) and inRange(d, pos) then
+			applyMaterialTo(d)
+			n += 1
+		end
+	end)
+	notify("Texture", TF("เปลี่ยน %d บล็อค เป็น %s", n, texState.mat.Name), "good")
+end
+
+local function restoreTextures()
+	local n = 0
+	for p, o in pairs(texOrig) do
+		if p.Parent then
+			p.Material, p.Color = o.Material, o.Color
+			n += 1
+		end
+	end
+	table.clear(texOrig)
+	notify("Texture", TF("คืนค่าเดิม %d บล็อค", n), "info")
+end
+
+Workspace.DescendantAdded:Connect(function(d)
+	if texState.auto and texState.mat and d:IsA("BasePart") and not d:IsA("Terrain") and not isCharPart(d) then
+		task.wait()
+		if d.Parent and d.Transparency < 1 then applyMaterialTo(d) end
+	end
+end)
+
+local function applyCustomTexture()
+	local id = string.match(texState.id, "%d+")
+	if not id then
+		notify("Texture", "ใส่ Texture ID (ตัวเลข) ก่อน", "bad", 2.5)
+		return
+	end
+	local root = getRoot()
+	local pos = root and root.Position
+	local parts, MAX = 0, 500
+	eachDescendant(function(d)
+		if parts < MAX and isBlock(d) and inRange(d, pos) and not d:FindFirstChild("NovaTex") then
+			for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
+				local t = Instance.new("Texture")
+				t.Name = "NovaTex"
+				t.Face = face
+				t.Texture = "rbxassetid://" .. id
+				t.StudsPerTileU = texState.tile
+				t.StudsPerTileV = texState.tile
+				t.Parent = d
+			end
+			parts += 1
+		end
+	end)
+	notify("Texture", (parts >= MAX and TF("ใส่ Texture บน %d บล็อค (สูงสุด %d)", parts, MAX) or TF("ใส่ Texture บน %d บล็อค", parts)), "good")
+end
+
+local function removeCustomTexture()
+	local n = 0
+	eachDescendant(function(d)
+		if d.Name == "NovaTex" and d:IsA("Texture") then
+			d:Destroy()
+			n += 1
+		end
+	end)
+	notify("Texture", TF("ลบ Texture %d ชิ้น", n), "info", 2)
+end
+
+--// =====================================================
+--//                        PAGES
+--// =====================================================
+local home     = createTab("Home", "⌂")
+local plr      = createTab("Player", "☺")
+local fpsPage  = createTab("FPS Boost", "⚡")
+local shader   = createTab("Shader", "◈")
+local texture  = createTab("Texture", "▦")
+local modelPage = createTab("Model", "◆")
+local settingsP = createTab("Settings", "⚙")
+
+--// ---- HOME ----
+;(function()
+	local banner = create("Frame", {
+		BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.new(1, 0, 0, 84), LayoutOrder = nextOrder(), Parent = home,
+	}, {corner(12), stroke(Theme.Stroke)})
+	local bannerGrad = create("UIGradient", {Color = ColorSequence.new(Theme.Surface, Theme.Hero), Rotation = 0, Parent = banner})
+	table.insert(themeHooks, function() bannerGrad.Color = ColorSequence.new(Theme.Surface, Theme.Hero) end)
+	local greet = create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 16, 0, 12), Size = UDim2.new(1, -100, 0, 26),
+		Font = Enum.Font.GothamBlack, TextSize = 20, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = "", Parent = banner,
+	})
+	greet:SetAttribute("notr", true)
+	regTextShadow(greet)
+	onLang(function() greet.Text = TF("สวัสดี, %s 👋", player.DisplayName) end)
+	create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 16, 0, 40), Size = UDim2.new(1, -100, 0, 36),
+		Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.SubText, TextWrapped = true,
+		TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		Text = "ยินดีต้อนรับสู่ NOVA HUB เลือกแท็บด้านซ้าย: FPS Boost, Shader, Texture และ Model อยู่ในนี้แล้ว", Parent = banner,
+	})
+	local bannerLogo = makeLogo(banner, UDim2.new(0, 56, 0, 56))
+	bannerLogo.AnchorPoint = Vector2.new(1, 0.5)
+	bannerLogo.Position = UDim2.new(1, -16, 0.5, 0)
+
+	Section(home, "สถานะเรียลไทม์")
+	local grid = Grid(home, 2, 74)
+
+	local function statCard(title, icon, idx, size)
+		local f = create("Frame", {BackgroundColor3 = Theme.Surface, LayoutOrder = idx, Parent = grid},
+			{corner(10), stroke(Theme.Stroke)})
+		local tl = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 8), Size = UDim2.new(1, -24, 0, 14),
+			Font = Enum.Font.GothamMedium, TextSize = 11, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = "", Parent = f,
+		})
+		tl:SetAttribute("notr", true)
+		onLang(function() tl.Text = icon .. "  " .. T(title) end)
+		local v = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 12, 0, 28), Size = UDim2.new(1, -24, 0, 34),
+			Font = Enum.Font.GothamBlack, TextSize = size or 24, TextXAlignment = Enum.TextXAlignment.Left,
+			TextTruncate = Enum.TextTruncate.AtEnd, Text = "--", Parent = f,
+		})
+		v:SetAttribute("notr", true)
+		bindAccent(v, "TextColor3")
+		return v
+	end
+	local fpsL   = statCard("FPS", "⚡", 1)
+	local pingL  = statCard("PING", "📶", 2)
+	local plrL   = statCard("ผู้เล่นในเซิร์ฟเวอร์", "👥", 3)
+	local timeL  = statCard("เวลาในเซิร์ฟเวอร์", "⏱", 4)
+	local boostL = statCard("FPS BOOST", "🚀", 5, 20)
+	local shadeL = statCard("SHADER", "🎨", 6, 20)
+
+	task.spawn(function()
+		while gui.Parent do
+			fpsL.Text = tostring(fpsNow)
+			fpsL.TextColor3 = fpsNow >= 50 and Theme.Good or (fpsNow >= 30 and Theme.Warn or Theme.Bad)
+			pingL.Text = math.floor(player:GetNetworkPing() * 1000 * 2) .. " ms"
+			plrL.Text = #Players:GetPlayers() .. " / " .. Players.MaxPlayers
+			local t = math.floor(Workspace.DistributedGameTime)
+			timeL.Text = string.format("%02d:%02d:%02d", t // 3600, (t % 3600) // 60, t % 60)
+			local active = 0
+			for _, v in pairs(boostState) do if v then active += 1 end end
+			boostL.Text = active > 0 and TF("ON · %d/7", active) or T("OFF")
+			shadeL.Text = shaderOn and (curPreset or T("Custom")) or T("OFF")
+			task.wait(0.5)
+		end
+	end)
+end)()
+
+--// ---- PLAYER ----
+local speedVal, jumpVal = 16, 50
+local function hum()
+	local ch = player.Character
+	return ch and ch:FindFirstChildOfClass("Humanoid")
+end
+local function applyStats()
+	local h = hum()
+	if h then
+		h.WalkSpeed = speedVal
+		h.UseJumpPower = true
+		h.JumpPower = jumpVal
+	end
+end
+player.CharacterAdded:Connect(function(ch)
+	ch:WaitForChild("Humanoid")
+	task.wait(0.2)
+	applyStats()
+end)
+
+;(function()
+	Section(plr, "การเคลื่อนไหว")
+	Slider(plr, "WalkSpeed", 8, 100, 16, function(v) speedVal = v applyStats() end)
+	Slider(plr, "JumpPower", 20, 200, 50, function(v) jumpVal = v applyStats() end)
+	local jumpConn
+	Toggle(plr, "Infinite Jump", "กระโดดซ้ำกลางอากาศได้", false, function(on)
+		if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+		if on then
+			jumpConn = UserInputService.JumpRequest:Connect(function()
+				local h = hum()
+				if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+			end)
+		end
+		notify("Infinite Jump", on and "เปิดใช้งานแล้ว" or "ปิดใช้งานแล้ว", on and "good" or "bad", 2)
+	end)
+
+	Section(plr, "ตัวละคร")
+	Slider(plr, "Field of View", 40, 120, 70, function(v) camera.FieldOfView = v end, "°")
+	Button(plr, "Reset Character", "รีเซ็ตตัวละครของคุณ", function()
+		local h = hum()
+		if h then h.Health = 0 end
+		notify("Character", "กำลังรีเซ็ตตัวละคร...", "info", 2)
+	end)
+end)()
+
+--// ---- FPS BOOST ----
+;(function()
+	Section(fpsPage, "กราฟ FPS สด")
+	local N = 60
+	local samples = {}
+	local MAXY = 130
+	local gcard = card(fpsPage, 160)
+	local statLbl = create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 6), Size = UDim2.new(1, -28, 0, 18),
+		Font = Enum.Font.GothamMedium, TextSize = 11, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = "--", Parent = gcard,
+	})
+	statLbl:SetAttribute("notr", true)
+	local plot = create("Frame", {
+		BackgroundColor3 = Theme.Surface2, Position = UDim2.new(0, 14, 0, 30), Size = UDim2.new(1, -28, 0, 120),
+		ClipsDescendants = true, Parent = gcard,
+	}, {corner(6)})
+	for _, gv in ipairs({30, 60, 90, 120}) do
+		create("Frame", {
+			BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 0.86, BorderSizePixel = 0,
+			Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1 - gv / MAXY, 0), ZIndex = 1, Parent = plot,
+		})
+		local gl = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 3, 1 - gv / MAXY, -10), Size = UDim2.new(0, 30, 0, 10),
+			Font = Enum.Font.GothamMedium, TextSize = 8, TextColor3 = Theme.SubText, TextXAlignment = Enum.TextXAlignment.Left,
+			Text = tostring(gv), ZIndex = 1, Parent = plot,
+		})
+		gl:SetAttribute("notr", true)
+	end
+	local bars, caps = {}, {}
+	for i = 1, N do
+		bars[i] = create("Frame", {
+			AnchorPoint = Vector2.new(0, 1), Position = UDim2.new((i - 1) / N, 0, 1, 0),
+			Size = UDim2.new(1 / N, -1, 0, 0), BackgroundColor3 = Theme.Good, BorderSizePixel = 0, ZIndex = 2, Parent = plot,
+		})
+		caps[i] = create("Frame", {
+			Size = UDim2.new(1, 0, 0, 2), BorderSizePixel = 0, Visible = false, ZIndex = 3, Parent = bars[i],
+		})
+	end
+	local avgLine = create("Frame", {
+		BackgroundColor3 = Theme.Warn, BackgroundTransparency = 0.35, BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 1), ZIndex = 3, Parent = plot,
+	})
+	local targetLine = create("Frame", {
+		Size = UDim2.new(1, 0, 0, 1), BorderSizePixel = 0, ZIndex = 4, Parent = plot,
+		Position = UDim2.new(0, 0, 1 - capVal / MAXY, 0),
+	})
+	bindAccent(targetLine, "BackgroundColor3")
+	local tl = create("TextLabel", {
+		BackgroundTransparency = 1, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -4, 0, -1),
+		Size = UDim2.new(0, 60, 0, 12), Font = Enum.Font.GothamBold, TextSize = 9, TextColor3 = Theme.SubText,
+		TextXAlignment = Enum.TextXAlignment.Right, Text = "target", ZIndex = 5, Parent = targetLine,
+	})
+	local badge = create("TextLabel", {
+		BackgroundTransparency = 0, Position = UDim2.new(0, 6, 0, 5), Size = UDim2.new(0, 92, 0, 16),
+		Font = Enum.Font.GothamBold, TextSize = 9, Text = "⚡ BOOSTED", Visible = false, ZIndex = 6, Parent = plot,
+	}, {round()})
+	badge:SetAttribute("notr", true)
+	bindAccent(badge, "BackgroundColor3")
+	bindOnAccent(badge, "TextColor3")
+
+	--// ผลของ FPS Boost: เทียบค่าเฉลี่ยก่อน/หลังเปิด
+	Section(fpsPage, "ผลของ FPS Boost")
+	local rcard = card(fpsPage, 88)
+	local resTitle = create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 6), Size = UDim2.new(1, -28, 0, 14),
+		Font = Enum.Font.GothamMedium, TextSize = 10, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+		TextXAlignment = Enum.TextXAlignment.Left, Text = "", Parent = rcard,
+	})
+	resTitle:SetAttribute("notr", true)
+	local resVals = {}
+	local resNames = {"ก่อน Boost", "หลัง Boost", "เปลี่ยนแปลง"}
+	for k = 1, 3 do
+		local x = (k - 1) / 3
+		local nm = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(x, 14, 0, 28), Size = UDim2.new(1 / 3, -14, 0, 14),
+			Font = Enum.Font.GothamMedium, TextSize = 10, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = resNames[k], Parent = rcard,
+		})
+		resVals[k] = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(x, 14, 0, 44), Size = UDim2.new(1 / 3, -14, 0, 30),
+			Font = Enum.Font.GothamBlack, TextSize = 20, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = "--", Parent = rcard,
+		})
+		resVals[k]:SetAttribute("notr", true)
+	end
+	local resState = "off"
+	local function resText()
+		if resState == "off" then resTitle.Text = T("ยังไม่ได้เปิด Boost เปิดสวิตช์ด้านล่างเพื่อวัดผล")
+		elseif resState == "measuring" then resTitle.Text = T("กำลังวัดผล Boost...")
+		elseif resState == "on" then resTitle.Text = T("Boost เปิดอยู่ วัดผลต่อเนื่อง")
+		else resTitle.Text = T("Boost ปิดอยู่ (แสดงผลครั้งล่าสุด)") end
+	end
+	onLang(resText)
+
+	task.spawn(function()
+		local wasActive, settle = false, 0
+		while gui.Parent do
+			local act = ext.boostActive() > 0
+			if act ~= wasActive then
+				wasActive = act
+				if act then
+					local sum, n = 0, 0
+					for k = math.max(1, #samples - 15), #samples do
+						sum += samples[k].v
+						n += 1
+					end
+					ext.pre = n > 0 and sum / n or fpsNow
+					ext.post, ext.postSum, ext.postN = nil, 0, 0
+					settle = 6
+					resState = "measuring"
+				else
+					resState = ext.post and "after" or "off"
+				end
+				resText()
+			end
+			if act then
+				if settle > 0 then
+					settle -= 1
+				else
+					ext.postSum += fpsNow
+					ext.postN += 1
+					if ext.postN >= 8 then
+						ext.post = ext.postSum / ext.postN
+						if resState ~= "on" then
+							resState = "on"
+							resText()
+						end
+					end
+				end
+			end
+			if ext.pre then resVals[1].Text = tostring(math.floor(ext.pre + 0.5)) else resVals[1].Text = "--" end
+			if ext.post then
+				resVals[2].Text = tostring(math.floor(ext.post + 0.5))
+				local g = math.floor((ext.post - ext.pre) / math.max(ext.pre, 1) * 100 + 0.5)
+				resVals[3].Text = (g >= 0 and "+" or "") .. g .. "%"
+				resVals[3].TextColor3 = g > 0 and Theme.Good or (g < 0 and Theme.Bad or Theme.Warn)
+				resVals[2].TextColor3 = Theme.Accent
+			else
+				resVals[2].Text, resVals[3].Text = "--", "--"
+				resVals[3].TextColor3 = Theme.Text
+				resVals[2].TextColor3 = Theme.Text
+			end
+
+			table.insert(samples, {v = fpsNow, b = act})
+			if #samples > N then table.remove(samples, 1) end
+			local sum, mn, mx = 0, math.huge, 0
+			for _, s in ipairs(samples) do
+				sum += s.v
+				if s.v < mn then mn = s.v end
+				if s.v > mx then mx = s.v end
+			end
+			local avg = sum / #samples
+			for i = 1, N do
+				local s = samples[#samples - (N - i)]
+				local b = bars[i]
+				if s then
+					b.Size = UDim2.new(1 / N, -1, math.min(s.v, MAXY) / MAXY, 0)
+					b.BackgroundColor3 = s.v >= 50 and Theme.Good or (s.v >= 30 and Theme.Warn or Theme.Bad)
+					caps[i].Visible = s.b
+					caps[i].BackgroundColor3 = Theme.Accent
+				else
+					b.Size = UDim2.new(1 / N, -1, 0, 0)
+					caps[i].Visible = false
+				end
+			end
+			avgLine.Position = UDim2.new(0, 0, 1 - math.min(avg, MAXY) / MAXY, 0)
+			badge.Visible = act
+			statLbl.Text = TF("ตอนนี้ %d   เฉลี่ย %d   ต่ำสุด %d   สูงสุด %d   เป้าหมาย %d", fpsNow, math.floor(avg + 0.5), mn, mx, capVal)
+			task.wait(0.25)
+		end
+	end)
+	Section(fpsPage, "FPS Boost")
+	local boostToggles = {}
+	local level = "Balanced"
+	local LEVELS = {
+		Light    = {shadows = true, effects = true},
+		Balanced = {shadows = true, effects = true, particles = true, water = true, quality = true},
+		Extreme  = {shadows = true, effects = true, particles = true, water = true, quality = true, materials = true, textures = true},
+	}
+	local function applyLevel(l)
+		for name, t in pairs(boostToggles) do t.Set(LEVELS[l][name] == true) end
+	end
+	local master = Toggle(fpsPage, "เปิด FPS Boost", "ใช้ระดับที่เลือกด้านล่างทันที", false, function(on)
+		if on then
+			applyLevel(level)
+			notify("FPS Boost", TF("เปิดระดับ %s", level), "good")
+		else
+			for _, t in pairs(boostToggles) do t.Set(false) end
+			notify("FPS Boost", "คืนค่าทั้งหมดแล้ว", "info")
+		end
+	end)
+	Dropdown(fpsPage, "ระดับ Boost", {"Light", "Balanced", "Extreme"}, "Balanced", function(l)
+		level = l
+		if master.Get() then applyLevel(l) end
+	end)
+
+	Section(fpsPage, "เลือกปิดทีละอย่าง")
+	local function bt(key, name, desc)
+		boostToggles[key] = Toggle(fpsPage, name, desc, false, function(on) Boost[key](on) end)
+	end
+	bt("shadows", "ปิดเงา", "ปิด GlobalShadows และการสะท้อนสภาพแวดล้อม")
+	bt("effects", "ปิดเอฟเฟกต์ภาพ", "Bloom, Blur, SunRays, DoF ของเกม")
+	bt("particles", "ปิดพาร์ติเคิล", "ไฟ ควัน ประกาย Trail และ Beam")
+	bt("water", "น้ำแบบเรียบ", "ลดคลื่นและการสะท้อนของน้ำ")
+	bt("quality", "กราฟิกต่ำสุด", "ตั้ง Quality Level เป็น 1 (ถ้าเกมอนุญาต)")
+	bt("materials", "วัสดุเรียบ", "เปลี่ยนบล็อคเป็น SmoothPlastic และปิดเงาของบล็อค")
+	bt("textures", "ซ่อน Decal/Texture", "ซ่อนรูปที่ติดบนบล็อคทั้งหมด")
+
+	Section(fpsPage, "FPS เป้าหมาย (1-120)")
+	local capSlider
+	capSlider = Slider(fpsPage, "FPS Limit", 1, 120, 60, function(v)
+		capVal = v
+		targetLine.Position = UDim2.new(0, 0, 1 - math.min(v, MAXY) / MAXY, 0)
+	end)
+	local function setCap(v)
+		capSlider.Set(v)
+		capVal = v
+		targetLine.Position = UDim2.new(0, 0, 1 - math.min(v, MAXY) / MAXY, 0)
+	end
+	Dropdown(fpsPage, "ค่าที่ใช้บ่อย", {"30", "45", "60", "90", "120"}, "60", function(o) setCap(tonumber(o)) end)
+	Button(fpsPage, "ใช้ FPS Limit", "ส่งค่าไปตั้ง FPS cap", function() trySetCap(capVal) end, "Apply")
+	Label(fpsPage, "หมายเหตุ: ถ้าสภาพแวดล้อมไม่รองรับ setfpscap ค่านี้จะแสดงเป็นเส้นเป้าหมายในกราฟอย่างเดียว", 50)
+end)()
+
+--// ---- SHADER ----
+;(function()
+	local PRESETS = {
+		{name = "Cinematic", desc = "โทนหนัง คอนทราสต์สูง", a = C(255, 190, 120), b = C(40, 60, 110),
+			v = {Bright = -3, Contrast = 24, Sat = -10, R = 255, G = 238, B = 220, Bloom = 45, BloomSize = 28, Rays = 20, Density = 25, Haze = 20, Exposure = 2, DoF = 15, Vig = 30, Letter = 6, Grain = 15}},
+		{name = "Vibrant", desc = "สีสดใส สดชื่น", a = C(255, 120, 200), b = C(90, 200, 255),
+			v = {Time = 14, Bright = 4, Contrast = 12, Sat = 45, R = 255, G = 252, B = 245, Bloom = 60, BloomSize = 30, Rays = 30, Density = 10, Haze = 5}},
+		{name = "Sunset", desc = "พระอาทิตย์ตกอบอุ่น", a = C(255, 140, 70), b = C(160, 60, 140),
+			v = {Time = 17.8, Bright = 2, Contrast = 15, Sat = 25, R = 255, G = 200, B = 160, Bloom = 80, BloomSize = 34, Rays = 60, Density = 30, Haze = 30, Exposure = 5, Vig = 20}},
+		{name = "Midnight", desc = "กลางคืนโทนน้ำเงิน", a = C(60, 80, 200), b = C(10, 10, 40),
+			v = {Time = 0, Bright = -5, Contrast = 18, Sat = -5, R = 170, G = 190, B = 255, Bloom = 55, BloomSize = 30, Density = 20, Haze = 15, Exposure = -2, Vig = 25}, p = "Stars"},
+		{name = "Noir", desc = "ขาวดำคมเข้ม", a = C(240, 240, 240), b = C(20, 20, 20),
+			v = {Sat = -100, Contrast = 40, Bright = -4, Bloom = 30, Density = 15, Haze = 10, Vig = 45, Grain = 35}},
+		{name = "Cyberpunk", desc = "นีออนม่วงชมพู", a = C(255, 60, 200), b = C(40, 220, 255),
+			v = {Time = 22, Contrast = 25, Sat = 55, R = 225, G = 170, B = 255, Bloom = 110, BloomSize = 40, Density = 22, Haze = 25, DoF = 20, Exposure = 1, Vig = 25, WashHue = 300, WashAmt = 12}},
+		{name = "Realistic", desc = "สมจริงเป็นธรรมชาติ", a = C(200, 220, 240), b = C(120, 160, 110),
+			v = {Time = 13, Contrast = 10, Sat = 8, R = 255, G = 250, B = 243, Bloom = 18, BloomSize = 24, Rays = 25, Density = 20, Haze = 12}},
+		{name = "Dreamy", desc = "ฟุ้งนุ่ม โทนฝัน", a = C(255, 190, 230), b = C(190, 170, 255),
+			v = {Time = 15, Bright = 8, Contrast = -8, Sat = 20, R = 255, G = 225, B = 245, Bloom = 120, BloomSize = 48, Rays = 40, Density = 30, Haze = 40, DoF = 30, WashHue = 320, WashAmt = 10}},
+		{name = "Retro Film", desc = "ฟิล์มเก่าโทนอุ่น", a = C(230, 190, 120), b = C(110, 80, 50),
+			v = {Sat = -20, Contrast = 20, R = 255, G = 225, B = 180, Bloom = 25, BloomSize = 20, Density = 10, Haze = 8, Exposure = 1, Vig = 35, Grain = 45}},
+		{name = "Toxic Neon", desc = "เขียวนีออนเรืองแสง", a = C(150, 255, 80), b = C(20, 60, 40),
+			v = {Time = 23, Contrast = 22, Sat = 40, R = 190, G = 255, B = 200, Bloom = 100, BloomSize = 36, Density = 28, Haze = 30, Vig = 30}},
+		{name = "Golden Hour", desc = "แสงทองยามเย็น แสงลอดฟุ้ง", a = C(255, 205, 120), b = C(255, 120, 70),
+			v = {Time = 17, Bright = 3, Contrast = 14, Sat = 30, R = 255, G = 214, B = 160, Bloom = 75, BloomSize = 36, Rays = 75, Density = 22, Haze = 25, Exposure = 4, SkyHue = 28, SkySat = 55, Vig = 25, WashHue = 35, WashAmt = 10}},
+		{name = "Blood Moon", desc = "จันทร์เลือด ท้องฟ้าแดงฉาน", a = C(255, 70, 70), b = C(40, 0, 10),
+			v = {Time = 0, Bright = -4, Contrast = 28, Sat = 30, R = 255, G = 130, B = 120, Bloom = 85, BloomSize = 34, Density = 30, Haze = 30, Exposure = -1, SkyHue = 0, SkySat = 75, Vig = 50, Grain = 18}, p = "Stars"},
+		{name = "Deep Ocean", desc = "ใต้ทะเลลึก ฟองอากาศลอย", a = C(70, 200, 255), b = C(10, 40, 110),
+			v = {Time = 12, Bright = -2, Contrast = 14, Sat = 28, R = 120, G = 205, B = 255, Bloom = 60, BloomSize = 32, Rays = 55, Density = 45, Haze = 40, DoF = 22, SkyHue = 200, SkySat = 65, Vig = 30, WashHue = 200, WashAmt = 14}, p = "Bubbles"},
+		{name = "Arctic Frost", desc = "หิมะโปรยปราย โทนฟ้าเย็น", a = C(220, 240, 255), b = C(120, 170, 230),
+			v = {Time = 11, Bright = 6, Contrast = 10, Sat = -10, R = 205, G = 232, B = 255, Bloom = 65, BloomSize = 34, Rays = 20, Density = 30, Haze = 32, SkyHue = 205, SkySat = 30, Vig = 20}, p = "Snow"},
+		{name = "Autumn Maple", desc = "ใบไม้ร่วง โทนส้มอุ่น", a = C(255, 160, 80), b = C(150, 60, 30),
+			v = {Time = 16, Bright = 2, Contrast = 15, Sat = 38, R = 255, G = 196, B = 135, Bloom = 45, BloomSize = 28, Rays = 45, Density = 20, Haze = 20, SkyHue = 30, SkySat = 40, Vig = 22}, p = "Sakura", pc = C(255, 150, 60)},
+		{name = "Sakura Spring", desc = "ซากุระปลิว โทนชมพูนุ่ม", a = C(255, 205, 225), b = C(255, 150, 190),
+			v = {Time = 14, Bright = 6, Contrast = 6, Sat = 28, R = 255, G = 218, B = 235, Bloom = 95, BloomSize = 40, Rays = 35, Density = 20, Haze = 28, DoF = 25, SkyHue = 330, SkySat = 28, Vig = 15, WashHue = 335, WashAmt = 10}, p = "Sakura"},
+		{name = "Matrix Code", desc = "ตัวอักษรเขียวไหลลงจอ", a = C(70, 255, 130), b = C(0, 30, 10),
+			v = {Time = 0, Bright = -6, Contrast = 30, Sat = 20, R = 150, G = 255, B = 170, Bloom = 100, BloomSize = 30, Density = 15, Haze = 10, SkyHue = 135, SkySat = 40, Vig = 40, Scan = 40, Grain = 20}, p = "Matrix"},
+		{name = "Synthwave", desc = "นีออนยุค 80 ม่วงชมพู", a = C(255, 90, 220), b = C(80, 60, 255),
+			v = {Time = 19, Contrast = 30, Sat = 60, R = 255, G = 135, B = 235, Bloom = 130, BloomSize = 44, Density = 25, Haze = 40, SkyHue = 300, SkySat = 80, Vig = 30, Scan = 25, WashHue = 280, WashAmt = 14}},
+		{name = "Horror Fog", desc = "หมอกหนา น่าขนลุก", a = C(120, 150, 120), b = C(10, 20, 14),
+			v = {Time = 2, Bright = -8, Contrast = 30, Sat = -35, R = 170, G = 200, B = 170, Bloom = 30, BloomSize = 24, Density = 55, Haze = 60, DoF = 30, Exposure = -3, Vig = 70, Grain = 50}},
+		{name = "Desert Mirage", desc = "ทะเลทรายร้อนระอุ", a = C(255, 225, 160), b = C(220, 140, 70),
+			v = {Time = 12, Contrast = 18, Sat = 20, R = 255, G = 226, B = 172, Bloom = 60, BloomSize = 32, Rays = 45, Density = 18, Haze = 38, Exposure = 4, DoF = 12, SkyHue = 40, SkySat = 40, Vig = 15}},
+		{name = "Aurora Night", desc = "แสงเหนือ ดาวเต็มฟ้า สีวนช้าๆ", a = C(120, 255, 210), b = C(120, 80, 255),
+			v = {Time = 0, Bright = -3, Contrast = 15, Sat = 40, R = 150, G = 255, B = 220, Bloom = 90, BloomSize = 36, Density = 20, Haze = 20, SkyHue = 150, SkySat = 75, Vig = 25, HueCycle = 14}, p = "Stars"},
+		{name = "Volcano Ember", desc = "ภูเขาไฟ ถ่านไฟลอย", a = C(255, 140, 60), b = C(90, 10, 10),
+			v = {Time = 20, Contrast = 30, Sat = 35, R = 255, G = 150, B = 90, Bloom = 90, BloomSize = 36, Density = 40, Haze = 45, SkyHue = 15, SkySat = 80, Vig = 45, Grain = 15}, p = "Embers"},
+		{name = "Storm Rain", desc = "ฝนตกหนัก ฟ้าแลบ", a = C(150, 170, 200), b = C(40, 50, 75),
+			v = {Time = 15, Bright = -6, Contrast = 25, Sat = -20, R = 170, G = 185, B = 205, Bloom = 30, BloomSize = 24, Density = 50, Haze = 55, Exposure = -2, Vig = 40}, p = "Rain", storm = true},
+		{name = "Anime Pop", desc = "สีจัดจ้านสไตล์การ์ตูน", a = C(255, 150, 190), b = C(100, 200, 255),
+			v = {Time = 14, Bright = 8, Contrast = 22, Sat = 70, R = 255, G = 245, B = 235, Bloom = 70, BloomSize = 30, Rays = 40, Density = 8, Exposure = 3}},
+		{name = "Dragon Jade", desc = "หยกเขียวทอง หิ่งห้อยลอยล้อมมังกร", a = C(80, 230, 150), b = C(240, 200, 80),
+			v = {Time = 18, Contrast = 20, Sat = 35, R = 190, G = 255, B = 215, Bloom = 85, BloomSize = 34, Rays = 30, Density = 25, Haze = 30, SkyHue = 140, SkySat = 45, Vig = 30, WashHue = 140, WashAmt = 8}, p = "Fireflies", pc = C(255, 225, 110)},
+		{name = "Epic Wide", desc = "จอกว้างแบบหนังฟอร์มยักษ์", a = C(255, 200, 150), b = C(30, 40, 70),
+			v = {Time = 16, Bright = -2, Contrast = 26, Sat = 8, R = 255, G = 236, B = 212, Bloom = 50, BloomSize = 30, Rays = 35, Density = 25, Haze = 22, Exposure = 2, DoF = 18, Vig = 38, Letter = 11, Grain = 22}},
+		{name = "Sepia Memory", desc = "ภาพเก่าสีน้ำตาลอมเหลือง", a = C(235, 205, 160), b = C(100, 70, 40),
+			v = {Sat = -60, Contrast = 20, R = 255, G = 224, B = 184, Bloom = 30, BloomSize = 24, Density = 12, Haze = 15, Vig = 50, Grain = 45}},
+		{name = "Neon Rain", desc = "โตเกียวยามค่ำ ฝนนีออน", a = C(210, 150, 255), b = C(255, 80, 180),
+			v = {Time = 22, Contrast = 28, Sat = 55, R = 205, G = 155, B = 255, Bloom = 120, BloomSize = 40, Density = 35, Haze = 35, SkyHue = 280, SkySat = 60, Vig = 30, WashHue = 320, WashAmt = 10}, p = "Rain", pc = C(220, 170, 255)},
+	}
+
+	local GROUPS = {
+		{"แสงและสี", {
+			{"Time", "เวลาในเกม", 0, 24, "h"}, {"Light", "ความสว่างแสงโลก", 0, 60, ""}, {"Bright", "ความสว่าง", -50, 50, "%"},
+			{"Contrast", "คอนทราสต์", -50, 100, "%"}, {"Sat", "ความอิ่มสี", -100, 100, "%"},
+			{"R", "สีโทน แดง (R)", 0, 255, ""}, {"G", "สีโทน เขียว (G)", 0, 255, ""}, {"B", "สีโทน น้ำเงิน (B)", 0, 255, ""},
+			{"Exposure", "Exposure", -30, 30, ""}, {"Amb", "แสงแวดล้อมสี", 0, 100, "%"},
+			{"Soft", "ความนุ่มของเงา", 0, 100, "%"}, {"Refl", "การสะท้อน", 0, 100, "%"},
+		}},
+		{"บรรยากาศและท้องฟ้า", {
+			{"Density", "ความหนาหมอก", 0, 60, "%"}, {"Haze", "Haze (ฟ้าหลัว)", 0, 100, ""},
+			{"SkyHue", "โทนสีท้องฟ้า", 0, 360, "°"}, {"SkySat", "ความอิ่มสีท้องฟ้า", 0, 100, "%"},
+		}},
+		{"เอฟเฟกต์ภาพ", {
+			{"Bloom", "Bloom (แสงฟุ้ง)", 0, 150, "%"}, {"BloomSize", "ขนาด Bloom", 0, 56, ""},
+			{"Rays", "SunRays (แสงแดด)", 0, 100, "%"}, {"DoF", "Depth of Field", 0, 100, "%"}, {"Blur", "Blur", 0, 40, ""},
+		}},
+		{"ฟิล์มและขอบจอ", {
+			{"Vig", "ขอบมืด (Vignette)", 0, 100, "%"}, {"Letter", "แถบหนัง (Letterbox)", 0, 20, "%"},
+			{"Grain", "เม็ดฟิล์ม", 0, 100, "%"}, {"Scan", "เส้นสแกน", 0, 100, "%"},
+			{"WashHue", "สีเคลือบจอ (องศา)", 0, 360, "°"}, {"WashAmt", "ความเข้มสีเคลือบจอ", 0, 60, "%"},
+		}},
+		{"อนุภาคบนจอ", {
+			{"PAmt", "ปริมาณอนุภาค", 0, 100, "%"}, {"PSpd", "ความเร็วอนุภาค", 10, 300, "%"},
+		}},
+		{"แอนิเมชัน", {
+			{"Cycle", "วงจรวัน-คืนอัตโนมัติ", 0, 100, "%"}, {"HueCycle", "สีวนอัตโนมัติ", 0, 100, "%"},
+			{"Pulse", "แสงเต้นตามจังหวะ", 0, 100, "%"},
+		}},
+	}
+	local HUE_KEYS = {SkyHue = true, WashHue = true}
+	local FS = ext.fxs
+
+	local intensity = 100
+	local customSliders = {}
+	local presetCards = {}
+	local shaderToggle, ptypeDD, stormToggle
+
+	local function syncSliders()
+		for key, sl in pairs(customSliders) do sl.Set(S[key]) end
+	end
+	local function blend(p, k)
+		for key, d in pairs(DEFAULT) do
+			local target = p.v[key] or d
+			if HUE_KEYS[key] then S[key] = target else S[key] = d + (target - d) * k end
+		end
+		if k > 0.3 then
+			FS.ptype, FS.pcolor, FS.storm = p.p or "None", p.pc, p.storm == true
+		else
+			FS.ptype, FS.pcolor, FS.storm = "None", nil, false
+		end
+	end
+	local function syncFx()
+		if ptypeDD then ptypeDD.Set(FS.ptype or "None") end
+		if stormToggle and stormToggle.Get() ~= FS.storm then stormToggle.Set(FS.storm) end
+	end
+	local function markSelected(name)
+		for n, c in pairs(presetCards) do setSel(c.stroke, n == name) end
+	end
+
+	Section(shader, "ควบคุมหลัก")
+	shaderToggle = Toggle(shader, "เปิด Shader", "เปิด-ปิดเอฟเฟกต์ทั้งหมด (ปิดแล้วคืนค่าเดิมของเกม)", false, function(on)
+		shaderOn = on
+		applyShader()
+		notify("Shader", on and TF("เปิด %s", curPreset or T("Custom")) or "ปิดแล้ว คืนค่าเดิมของเกม", on and "good" or "info", 2)
+	end)
+	Slider(shader, "ความแรงของ Shader", 0, 100, 100, function(v)
+		intensity = v
+		local p
+		for _, pr in ipairs(PRESETS) do if pr.name == curPreset then p = pr end end
+		if p then
+			blend(p, v / 100)
+			syncSliders()
+			syncFx()
+			applyShader()
+		end
+	end, "%")
+	Toggle(shader, "Fullbright", "เพิ่มความสว่างทั้งแมพ", false, function(on)
+		ext.fullbright = on
+		Lighting.Ambient = on and Color3.fromRGB(200, 200, 200) or orig.Ambient
+		Lighting.OutdoorAmbient = on and Color3.fromRGB(200, 200, 200) or orig.OutdoorAmbient
+		if not on and shaderOn then applyShader() end
+	end)
+
+	local function selectPreset(p)
+		curPreset = p.name
+		blend(p, intensity / 100)
+		markSelected(p.name)
+		syncSliders()
+		syncFx()
+		if not shaderOn then
+			shaderToggle.Set(true)
+		else
+			applyShader()
+		end
+		notify("Shader", p.name .. " • " .. T(p.desc), "good", 2)
+	end
+
+	Section(shader, "เลือก Shader")
+	Button(shader, "สุ่ม Shader", "สุ่มพรีเซ็ตมาลองใช้", function()
+		selectPreset(PRESETS[math.random(#PRESETS)])
+	end, "Run")
+	local grid = Grid(shader, 2, 58)
+	for i, p in ipairs(PRESETS) do
+		local c = create("TextButton", {
+			BackgroundColor3 = Theme.Surface, Text = "", AutoButtonColor = false, LayoutOrder = i, Parent = grid,
+		}, {corner(10)})
+		local st = stroke(Theme.Stroke)
+		st.Parent = c
+		create("Frame", {
+			BackgroundColor3 = Color3.new(1, 1, 1), Position = UDim2.new(0, 8, 0.5, -19), Size = UDim2.new(0, 38, 0, 38), Parent = c,
+		}, {corner(8), create("UIGradient", {Color = ColorSequence.new(p.a, p.b), Rotation = 45})})
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 54, 0, 7), Size = UDim2.new(1, -58, 0, 16),
+			Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = p.name, Parent = c,
+		})
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 54, 0, 24), Size = UDim2.new(1, -58, 0, 28),
+			Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = Theme.SubText, TextWrapped = true,
+			TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top, Text = p.desc, Parent = c,
+		})
+		presetCards[p.name] = {stroke = st}
+		c.MouseEnter:Connect(function() tween(c, 0.12, {BackgroundColor3 = Theme.Surface2}) end)
+		c.MouseLeave:Connect(function() tween(c, 0.12, {BackgroundColor3 = Theme.Surface}) end)
+		c.MouseButton1Click:Connect(function() selectPreset(p) end)
+	end
+
+	Section(shader, "โหมดปรับแต่ง")
+	local customBox = Container(shader)
+	customBox.Visible = false
+	Toggle(shader, "โหมดปรับแต่งเอง (Custom)", "เปิดแผงปรับค่าทุกตัวแบบละเอียด", false, function(on)
+		customBox.Visible = on
+	end).Set(false)
+	customBox.LayoutOrder = nextOrder()
+
+	local function touch()
+		curPreset = nil
+		markSelected(nil)
+		if not shaderOn then shaderToggle.Set(true) else applyShader() end
+	end
+	for gi, group in ipairs(GROUPS) do
+		Section(customBox, group[1])
+		for _, def in ipairs(group[2]) do
+			local key, name, mn, mx, suf = def[1], def[2], def[3], def[4], def[5]
+			customSliders[key] = Slider(customBox, name, mn, mx, S[key], function(v)
+				S[key] = v
+				touch()
+			end, suf)
+		end
+		if group[1] == "อนุภาคบนจอ" then
+			ptypeDD = Dropdown(customBox, "ชนิดอนุภาค", {"None", "Snow", "Rain", "Sakura", "Fireflies", "Embers", "Stars", "Matrix", "Bubbles"}, "None", function(o)
+				FS.ptype, FS.pcolor = o, nil
+				touch()
+			end)
+			stormToggle = Toggle(customBox, "พายุฟ้าแลบ", "ฟ้าแลบวาบเป็นช่วงๆ", false, function(on)
+				FS.storm = on
+				if shaderOn then applyShader() end
+			end)
+		end
+	end
+
+	Section(customBox, "สล็อตบันทึก")
+	local slots, slot = {}, 1
+	Dropdown(customBox, "สล็อต", {"Slot 1", "Slot 2", "Slot 3"}, "Slot 1", function(o) slot = tonumber(string.match(o, "%d")) end)
+	Button(customBox, "บันทึกค่าปัจจุบัน", "เก็บค่าทั้งหมดลงสล็อตที่เลือก", function()
+		local copy = {}
+		for k, v in pairs(S) do copy[k] = v end
+		slots[slot] = {S = copy, ptype = FS.ptype, pcolor = FS.pcolor, storm = FS.storm}
+		notify("Shader", TF("บันทึกลง Slot %d", slot), "good", 2)
+	end, "Save")
+	Button(customBox, "โหลดค่าที่บันทึก", "เรียกค่าจากสล็อตที่เลือก", function()
+		local sv = slots[slot]
+		if not sv then
+			notify("Shader", TF("Slot %d ยังว่างอยู่", slot), "bad", 2)
+			return
+		end
+		for k, v in pairs(sv.S) do S[k] = v end
+		FS.ptype, FS.pcolor, FS.storm = sv.ptype, sv.pcolor, sv.storm
+		curPreset = nil
+		markSelected(nil)
+		syncSliders()
+		syncFx()
+		if not shaderOn then shaderToggle.Set(true) else applyShader() end
+		notify("Shader", TF("โหลด Slot %d แล้ว", slot), "good", 2)
+	end, "Load")
+	Button(customBox, "รีเซ็ตค่า Shader", "กลับเป็นค่าเริ่มต้น", function()
+		for k, v in pairs(DEFAULT) do S[k] = v end
+		FS.ptype, FS.pcolor, FS.storm = "None", nil, false
+		curPreset, intensity = nil, 100
+		markSelected(nil)
+		syncSliders()
+		syncFx()
+		applyShader()
+		notify("Shader", "รีเซ็ตแล้ว", "info", 2)
+	end, "Reset")
+end)()
+
+--// ---- TEXTURE ----
+;(function()
+	local MATERIALS = {
+		{"SmoothPlastic", Color3.fromRGB(200, 200, 210)}, {"Plastic", Color3.fromRGB(180, 180, 195)},
+		{"Wood", Color3.fromRGB(150, 100, 60)}, {"WoodPlanks", Color3.fromRGB(190, 140, 85)},
+		{"Brick", Color3.fromRGB(170, 70, 55)}, {"Cobblestone", Color3.fromRGB(125, 125, 130)},
+		{"Concrete", Color3.fromRGB(150, 150, 150)}, {"Granite", Color3.fromRGB(110, 105, 115)},
+		{"Marble", Color3.fromRGB(235, 232, 228)}, {"Slate", Color3.fromRGB(80, 90, 100)},
+		{"Metal", Color3.fromRGB(160, 170, 180)}, {"DiamondPlate", Color3.fromRGB(135, 140, 150)},
+		{"CorrodedMetal", Color3.fromRGB(150, 95, 60)}, {"Grass", Color3.fromRGB(80, 160, 70)},
+		{"Ice", Color3.fromRGB(170, 220, 245)}, {"Sand", Color3.fromRGB(225, 200, 140)},
+		{"Fabric", Color3.fromRGB(190, 150, 175)}, {"Neon", Color3.fromRGB(80, 255, 200)},
+		{"Glass", Color3.fromRGB(190, 230, 240)}, {"Foil", Color3.fromRGB(235, 215, 120)},
+		{"Limestone", Color3.fromRGB(205, 195, 170)}, {"Pebble", Color3.fromRGB(140, 130, 120)},
+		{"Asphalt", Color3.fromRGB(60, 62, 70)}, {"Rubber", Color3.fromRGB(45, 45, 50)},
+	}
+	local PALETTE = {
+		Color3.fromRGB(255, 255, 255), Color3.fromRGB(120, 120, 130), Color3.fromRGB(25, 25, 30),
+		Color3.fromRGB(235, 70, 80), Color3.fromRGB(255, 150, 60), Color3.fromRGB(250, 215, 70),
+		Color3.fromRGB(80, 200, 120), Color3.fromRGB(70, 140, 255), Color3.fromRGB(150, 100, 255),
+		Color3.fromRGB(255, 110, 190),
+	}
+
+	Section(texture, "เลือกวัสดุบล็อค")
+	local grid = Grid(texture, 3, 42)
+	local cells = {}
+	local function markMat(name)
+		for n, c in pairs(cells) do
+			local on = n == name
+			setSel(c, on)
+		end
+	end
+	for i, m in ipairs(MATERIALS) do
+		local name, col = m[1], m[2]
+		local b = create("TextButton", {
+			BackgroundColor3 = Theme.Surface, Text = "", AutoButtonColor = false, LayoutOrder = i, Parent = grid,
+		}, {corner(8)})
+		local st = stroke(Theme.Stroke)
+		st.Parent = b
+		create("Frame", {
+			BackgroundColor3 = col, Position = UDim2.new(0, 7, 0.5, -12), Size = UDim2.new(0, 24, 0, 24), Parent = b,
+		}, {corner(6), stroke(Color3.new(1, 1, 1), 1, 0.7)})
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 36, 0, 0), Size = UDim2.new(1, -38, 1, 0),
+			Font = Enum.Font.GothamMedium, TextSize = 10, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = name, Parent = b,
+		})
+		cells[name] = st
+		b.MouseEnter:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface2}) end)
+		b.MouseLeave:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface}) end)
+		b.MouseButton1Click:Connect(function()
+			local ok, mat = pcall(function() return Enum.Material[name] end)
+			if ok then
+				texState.mat = mat
+				markMat(name)
+			end
+		end)
+	end
+
+	Section(texture, "สีบล็อค (ไม่บังคับ)")
+	local pc = card(texture, 80)
+	titleDesc(pc, "เลือกสี", nil, 0.5)
+	pc:FindFirstChildOfClass("TextLabel").Size = UDim2.new(1, -28, 0, 28)
+	local row = create("Frame", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 38), Size = UDim2.new(1, -28, 0, 30), Parent = pc,
+	}, {create("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder})})
+	local swatches = {}
+	for i, col in ipairs(PALETTE) do
+		local sw = create("TextButton", {
+			BackgroundColor3 = col, Size = UDim2.new(0, 26, 0, 26), Text = "", AutoButtonColor = false, LayoutOrder = i, Parent = row,
+		}, {round()})
+		local st = stroke(Theme.Stroke, 1)
+		st.Parent = sw
+		swatches[i] = st
+		sw.MouseButton1Click:Connect(function()
+			texState.color = col
+			for j, s in ipairs(swatches) do
+				setSel(s, j == i, 3)
+			end
+		end)
+	end
+	Toggle(texture, "ใช้สีที่เลือกด้วย", "เปลี่ยนสีบล็อคพร้อมกับวัสดุ", false, function(on) texState.useColor = on end)
+
+	Section(texture, "ขอบเขตและการใช้งาน")
+	local radiusSlider
+	Dropdown(texture, "ใช้กับ", {"ทุกบล็อคในแมพ", "เฉพาะบล็อคใกล้ตัว"}, "ทุกบล็อคในแมพ", function(o)
+		texState.near = o == "เฉพาะบล็อคใกล้ตัว"
+	end)
+	Slider(texture, "รัศมี (บล็อคใกล้ตัว)", 20, 500, 100, function(v) texState.radius = v end, " studs")
+	Toggle(texture, "ใช้กับบล็อคที่เกิดใหม่", "บล็อคที่โผล่มาทีหลังจะเปลี่ยนตามอัตโนมัติ", false, function(on) texState.auto = on end)
+	Button(texture, "เปลี่ยนวัสดุบล็อค", "ใช้วัสดุ (และสี) ที่เลือกกับแมพ", applyTextures, "Apply")
+	Button(texture, "คืนค่าบล็อคเดิม", "กลับเป็นวัสดุและสีเดิมของเกม", restoreTextures, "Restore")
+
+	Section(texture, "ใส่รูป Texture ของคุณเอง")
+	TextBox(texture, "Texture ID", "เช่น 6372755229", function(text) texState.id = text end)
+	Slider(texture, "ขนาดต่อ 1 ภาพ", 1, 16, 4, function(v) texState.tile = v end, " studs")
+	Button(texture, "ใส่ Texture บนบล็อค", "ติดรูปครบ 6 ด้าน (สูงสุด 500 บล็อค)", applyCustomTexture, "Apply")
+	Button(texture, "ลบ Texture ที่ใส่", "ลบรูปที่ NOVA HUB ติดไว้ทั้งหมด", removeCustomTexture, "Remove")
+	Label(texture, "ทุกอย่างเปลี่ยนเฉพาะฝั่งเรา คนอื่นในเซิร์ฟเวอร์ไม่เห็น ID ต้องเป็นรูปภาพ (Image) ไม่ใช่ Decal ID", 52)
+end)()
+
+--// ---- MODEL ----
+;(function()
+	local ANIMS = {
+		{key = "spinY", name = "หมุนซ้าย-ขวา", icon = "↻", fn = function(t, r, d) return nil, CFrame.Angles(0, t * 1.2 * d, 0) end},
+		{key = "spinX", name = "หมุนหน้า-หลัง", icon = "⟳", fn = function(t, r, d) return nil, CFrame.Angles(t * 1.2 * d, 0, 0) end},
+		{key = "spinZ", name = "กลิ้ง", icon = "◔", fn = function(t, r, d) return nil, CFrame.Angles(0, 0, t * 1.2 * d) end},
+		{key = "bob", name = "ลอยขึ้น-ลง", icon = "↕", fn = function(t, r, d) return Vector3.new(0, math.sin(t * 2 * d) * 0.8 * r, 0) end},
+		{key = "slide", name = "เลื่อนซ้าย-ขวา", icon = "↔", fn = function(t, r, d) return Vector3.new(math.sin(t * 1.5 * d) * 1.6 * r, 0, 0) end},
+		{key = "depth", name = "เข้า-ออก", icon = "⇆", fn = function(t, r, d) return Vector3.new(0, 0, math.sin(t * 1.5 * d) * 1.8 * r) end},
+		{key = "circle", name = "วนวงกลม", icon = "◯", fn = function(t, r, d) return Vector3.new(math.cos(t * 1.5 * d) * 1.2 * r, math.sin(t * 1.5 * d) * 1.2 * r, 0) end},
+		{key = "eight", name = "วนเลข 8", icon = "∞", fn = function(t, r, d) return Vector3.new(math.sin(t * 1.5 * d) * 1.6 * r, math.sin(t * 3 * d) * 0.7 * r, 0) end},
+		{key = "sway", name = "ส่ายไปมา", icon = "≈", fn = function(t, r, d) return nil, CFrame.Angles(0, math.sin(t * 1.3 * d) * 0.35 * r, math.sin(t * 2 * d) * 0.3 * r) end},
+		{key = "pulse", name = "เด้งย่อ-ขยาย", icon = "◉", fn = function(t, r, d) return nil, nil, 1 + math.sin(t * 3 * d) * 0.18 * r end},
+		{key = "shake", name = "สั่น", icon = "✺", fn = function(t, r, d) return Vector3.new(math.noise(t * 20, 0.5) * 0.25 * r, math.noise(0.5, t * 20) * 0.25 * r, 0) end},
+	}
+
+	local M = {
+		model = nil, base = CFrame.new(), baseScale = 1, curScale = 1,
+		sel = {spinY = true}, mix = false, reverse = false, paused = false, drag = true,
+		speed = 100, range = 100, size = 100, zoom = 9, yaw = 0, pitch = 0, t = 0, name = "NovaModel", meshId = "", texId = "",
+	}
+
+	--// การ์ดแสดงโมเดล
+	Section(modelPage, "ตัวอย่างโมเดล")
+	local vcard = card(modelPage, 220)
+	create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 14, 0, 4), Size = UDim2.new(1, -28, 0, 22),
+		Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = Theme.SubText, TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "ลากบนภาพเพื่อหมุนมุมมอง", Parent = vcard,
+	})
+	local vpf = create("ViewportFrame", {
+		Position = UDim2.new(0, 10, 0, 28), Size = UDim2.new(1, -20, 0, 182),
+		BackgroundColor3 = Color3.fromRGB(22, 24, 40), Ambient = Color3.fromRGB(150, 150, 165),
+		LightColor = Color3.fromRGB(255, 255, 255), LightDirection = Vector3.new(-0.6, -1, -0.8), Parent = vcard,
+	}, {corner(8)})
+	local vcam = create("Camera", {FieldOfView = 40, Parent = vpf})
+	vpf.CurrentCamera = vcam
+	local statusLbl = create("TextLabel", {
+		BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 8, 1, -6),
+		Size = UDim2.new(1, -16, 0, 14), Font = Enum.Font.GothamMedium, TextSize = 10, TextColor3 = Theme.SubText,
+		TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Text = "", Parent = vpf,
+	})
+	statusLbl:SetAttribute("notr", true)
+	local function updateStatus()
+		if M.statusName then statusLbl.Text = TF("กำลังแสดง: %s  •  %d ชิ้น", M.statusName, M.statusN) end
+	end
+	onLang(updateStatus)
+
+	--// โมเดลผีที่สร้างอัตโนมัติจากพาร์ต (ไม่ต้องนำเข้าไฟล์)
+	--// ตำแหน่ง ขนาด และการหมุนของทรงรีทั้ง 51 ชิ้น วัดมาจากเมชในไฟล์ FBX ของผี (หน่วยซม. หาร 100 = studs)
+	--// สีเฉลี่ยมาจาก Texture ต้นฉบับ เป็นรูปทรงประมาณด้วยทรงรี ไม่ใช่เมชจริงและไม่มีลวดลายละเอียด
+	local GHOST_PARTS = {
+		-- {ชื่อ, cx, cy, cz, กว้าง, สูง, ลึก, r00..r22 (การหมุน), R, G, B}
+		{"Head", 0,227,0, 269,197,197, -0.002,0.992,0.129,1.000,0.002,-0.001,-0.001,0.129,-0.992, 218,218,218},
+		{"Torso1", 0,-50,-12, 145,115,99, -0.018,-1.000,-0.004,-0.246,0.001,0.969,-0.969,0.018,-0.246, 195,199,198},
+		{"Torso2", -1,4,-18, 153,124,72, -0.206,-0.979,0.002,-0.136,0.027,-0.990,0.969,-0.204,-0.138, 198,211,205},
+		{"Torso3", 0,62,-29, 152,129,64, -1.000,0.000,0.000,0.000,0.080,0.997,0.000,0.997,-0.080, 215,216,215},
+		{"Torso4", 0,116,-21, 155,129,71, -1.000,0.000,0.000,0.000,0.087,0.996,0.000,0.996,-0.087, 206,206,206},
+		{"HipL", -60,-94,28, 187,172,137, 0.119,0.020,-0.993,0.993,-0.026,0.119,-0.023,-0.999,-0.023, 203,210,206},
+		{"HipR", 60,-94,28, 187,172,137, -0.119,-0.020,-0.993,0.993,-0.026,-0.119,-0.023,-0.999,0.023, 203,210,206},
+		{"Tail1", 11,-380,32, 248,134,68, -0.270,-0.957,-0.106,-0.002,-0.110,0.994,-0.963,0.269,0.027, 243,243,243},
+		{"Tail2", 23,-333,17, 275,176,57, -0.378,0.926,-0.012,0.079,0.019,-0.997,-0.923,-0.378,-0.080, 244,244,244},
+		{"Tail3", 8,-292,-29, 205,166,37, -0.971,-0.239,0.002,0.003,-0.022,-1.000,0.239,-0.971,0.022, 246,246,246},
+		{"Tail4", -6,-262,-22, 207,190,30, -0.964,0.267,-0.014,0.014,-0.002,-1.000,-0.267,-0.964,-0.002, 244,244,244},
+		{"Tail5", -5,-237,-12, 238,196,30, -0.999,0.037,0.008,0.008,0.005,1.000,0.037,0.999,-0.005, 243,243,243},
+		{"Tail6", -3,-212,-6, 246,203,29, -1.000,-0.007,-0.001,-0.001,0.011,1.000,-0.007,1.000,-0.011, 240,242,240},
+		{"Tail7", -1,-189,0, 253,210,28, -1.000,-0.026,0.003,-0.002,-0.014,-1.000,0.026,-1.000,0.014, 238,239,238},
+		{"Tail8", 0,-164,6, 270,204,28, -1.000,-0.005,-0.002,-0.003,0.008,1.000,-0.005,1.000,-0.008, 238,239,238},
+		{"Tail9", 0,-141,12, 279,198,25, -0.999,-0.037,0.003,-0.003,-0.004,-1.000,0.037,-0.999,0.004, 238,239,239},
+		{"Tail10", 0,-121,16, 285,189,22, -1.000,-0.030,-0.003,-0.003,-0.001,1.000,-0.030,1.000,0.001, 237,237,237},
+		{"Tail11", 0,-103,18, 288,171,21, -1.000,-0.011,0.002,-0.002,0.003,-1.000,0.011,-1.000,-0.003, 228,228,228},
+		{"Tail12", 0,-85,16, 288,148,19, -1.000,-0.000,0.000,0.000,-0.007,1.000,-0.000,1.000,0.007, 213,213,213},
+		{"Tail13", 0,-70,15, 284,117,15, -1.000,-0.000,0.000,0.000,-0.015,1.000,-0.000,1.000,0.015, 207,207,207},
+		{"Tail14", 0,-59,14, 262,72,11, -1.000,-0.000,0.000,0.000,-0.015,1.000,-0.000,1.000,0.015, 195,195,195},
+		{"ArmL1", -48,-16,58, 111,99,39, -0.977,0.211,-0.029,0.062,0.154,-0.986,-0.203,-0.965,-0.164, 221,221,221},
+		{"ArmL2", -149,133,-39, 149,113,53, -0.163,0.929,0.332,-0.847,-0.304,0.435,0.505,-0.210,0.837, 236,237,236},
+		{"ArmL3", -114,159,-113, 119,124,78, 0.241,0.063,-0.968,0.483,0.857,0.176,0.842,-0.511,0.176, 224,228,226},
+		{"ArmL4", -160,160,-105, 118,133,65, 0.191,0.432,-0.882,0.849,0.379,0.369,0.493,-0.819,-0.294, 221,231,226},
+		{"ArmL5", -194,101,-53, 127,114,73, 0.327,-0.031,-0.945,0.301,0.951,0.073,0.896,-0.308,0.320, 234,234,234},
+		{"ArmL6", -26,15,18, 100,103,39, -0.741,-0.573,0.350,-0.665,0.699,-0.263,-0.094,-0.427,-0.899, 220,220,220},
+		{"ArmL7", -62,43,-129, 78,36,27, 0.125,-0.180,-0.976,-0.942,0.289,-0.174,0.313,0.940,-0.133, 224,224,224},
+		{"ArmL8", -13,-91,-56, 51,42,26, -0.224,0.893,0.391,0.793,0.400,-0.460,-0.567,0.207,-0.798, 220,220,220},
+		{"ArmL9", -151,80,-74, 123,123,77, 0.107,0.717,-0.688,-0.582,0.607,0.542,0.806,0.343,0.482, 227,227,227},
+		{"ArmL10", -89,34,-107, 68,52,22, 0.055,0.953,0.298,-0.946,-0.046,0.320,0.319,-0.300,0.899, 222,222,222},
+		{"ArmR1", 113,158,-120, 112,116,63, -0.395,-0.086,-0.915,0.803,0.451,-0.389,0.446,-0.888,-0.109, 225,227,226},
+		{"ArmR2", 150,174,-119, 109,108,65, -0.004,-0.611,-0.791,0.785,0.489,-0.381,0.620,-0.622,0.478, 220,231,226},
+		{"ArmR3", 196,77,-72, 91,71,69, -0.778,-0.222,-0.587,0.119,-0.971,0.208,-0.616,0.092,0.782, 233,233,233},
+		{"ArmR4", 20,-91,-58, 64,40,26, -0.323,-0.940,-0.111,-0.898,0.342,-0.276,0.298,0.010,-0.955, 217,217,217},
+		{"ArmR5", 77,38,-119, 82,68,34, 0.713,-0.397,0.578,-0.257,-0.915,-0.311,0.652,0.073,-0.755, 223,223,223},
+		{"ArmR6", 185,133,-80, 118,97,57, 0.374,-0.221,-0.900,0.027,0.973,-0.228,0.927,0.061,0.370, 228,233,231},
+		{"ArmR7", 142,78,-70, 123,107,58, 0.218,-0.603,-0.767,-0.824,0.307,-0.476,0.523,0.736,-0.430, 227,227,227},
+		{"ArmR8", 32,2,40, 154,102,57, -0.597,0.766,-0.237,0.617,0.250,-0.746,-0.513,-0.592,-0.622, 220,220,220},
+		{"ArmR9", 140,160,-63, 117,110,54, -0.834,0.342,-0.432,-0.547,-0.610,0.573,-0.068,0.715,0.696, 229,233,232},
+		{"ArmR10", 165,110,-27, 110,105,56, -0.990,-0.128,0.065,0.138,-0.972,0.192,0.039,0.199,0.979, 237,237,237},
+		{"UpperL", -43,59,-75, 128,110,102, -0.093,0.240,-0.966,-0.972,-0.231,0.036,-0.214,0.943,0.255, 206,209,207},
+		{"UpperR", 43,59,-75, 128,110,102, 0.098,-0.240,-0.966,-0.972,-0.231,-0.041,-0.213,0.943,-0.256, 206,209,207},
+		{"HandL", -73,37,-122, 40,40,19, 0.782,0.209,0.587,-0.358,0.922,0.148,-0.510,-0.326,0.796, 127,196,168},
+		{"HandR", 73,37,-122, 40,40,19, 0.782,-0.209,-0.587,0.358,0.922,0.148,0.510,-0.326,0.796, 127,196,168},
+		{"Chest", 0,-89,-51, 28,27,19, 0.000,-1.000,0.000,0.770,0.000,0.638,-0.638,0.000,0.770, 96,151,128},
+		{"Collar", 0,150,-19, 133,98,50, -0.000,-1.000,0.000,-0.349,0.000,0.937,-0.937,0.000,-0.349, 78,28,11},
+		{"EarL", -71,238,-72, 121,38,6, -0.792,-0.130,0.597,0.162,-0.987,-0.000,0.589,0.097,0.802, 50,5,17},
+		{"EarR", 71,238,-72, 121,38,6, -0.792,0.130,-0.597,-0.162,-0.987,0.000,-0.589,0.097,0.802, 50,5,17},
+		{"TailTip1", 49,-333,153, 46,35,28, 0.295,0.616,-0.730,-0.123,0.782,0.610,0.948,-0.090,0.307, 231,231,231},
+		{"TailTip2", 59,-290,188, 25,22,17, 0.310,0.306,-0.900,0.949,-0.050,0.310,0.050,-0.951,-0.306, 231,231,231},
+	}
+	local function buildGhost()
+		local m = Instance.new("Model")
+		m.Name = "GhostAuto"
+		for _, d in ipairs(GHOST_PARTS) do
+			local p = Instance.new("Part")
+			p.Name = d[1]
+			p.Size = Vector3.new(d[5], d[6], d[7]) / 100
+			p.CFrame = CFrame.new(d[2] / 100, d[3] / 100, d[4] / 100, d[8], d[9], d[10], d[11], d[12], d[13], d[14], d[15], d[16])
+			p.Color = Color3.fromRGB(d[17], d[18], d[19])
+			p.Material = Enum.Material.SmoothPlastic
+			p.Anchored, p.CanCollide = true, false
+			create("SpecialMesh", {MeshType = Enum.MeshType.Sphere, Parent = p})
+			p.Parent = m
+		end
+		return m
+	end
+
+	--// เตรียมสำเนาโมเดลให้ใช้ใน ViewportFrame ได้
+	local function prepare(src)
+		local m
+		if src:IsA("Model") then
+			m = src:Clone()
+		elseif src:IsA("BasePart") then
+			m = Instance.new("Model")
+			local p = src:Clone()
+			if p then p.Parent = m end
+		else
+			m = Instance.new("Model")
+			for _, c in ipairs(src:GetChildren()) do
+				local cl = c:Clone()
+				if cl then cl.Parent = m end
+			end
+		end
+		if not m then return nil end
+		local junk, parts = {}, 0
+		for _, d in ipairs(m:GetDescendants()) do
+			if d:IsA("BasePart") then
+				d.Anchored, d.CanCollide, d.CanTouch = true, false, false
+				parts += 1
+			elseif d:IsA("LuaSourceContainer") or d:IsA("Humanoid") then
+				table.insert(junk, d)
+			end
+		end
+		for _, j in ipairs(junk) do j:Destroy() end
+		if m:IsA("Model") and parts == 0 then return nil end
+		return m
+	end
+
+	--// ย่อ/ขยายให้พอดีกรอบ ตั้งจุดหมุนที่กลางตัว แล้ววางลงใน Viewport
+	local function mount(m, label)
+		if not m then return false end
+		if M.model then M.model:Destroy() end
+		m.PrimaryPart = nil
+		m.Parent = vpf
+		local _, size = m:GetBoundingBox()
+		local maxD = math.max(size.X, size.Y, size.Z)
+		if maxD <= 0 then
+			m:Destroy()
+			return false
+		end
+		pcall(function() m:ScaleTo(m:GetScale() * 4 / maxD) end)
+		local cf2 = m:GetBoundingBox()
+		m.WorldPivot = cf2
+		m:PivotTo(CFrame.Angles(0, math.pi, 0) * cf2.Rotation)
+		M.model, M.base = m, m:GetPivot()
+		M.baseScale = m:GetScale()
+		M.curScale = M.baseScale * M.size / 100
+		pcall(function() m:ScaleTo(M.curScale) end)
+		local n = 0
+		for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") then n += 1 end end
+		M.statusName, M.statusN = label or m.Name, n
+		updateStatus()
+		return true
+	end
+
+	local function loadByName()
+		local src = ReplicatedStorage:FindFirstChild(M.name, true)
+		if not src then
+			notify("Model", TF("ไม่พบ \"%s\" ใน ReplicatedStorage นำเข้า FBX แล้ววางไว้ที่นั่นก่อน", M.name), "bad", 4)
+			return false
+		end
+		if mount(prepare(src), src.Name) then
+			notify("Model", TF("โหลด %s แล้ว", src.Name), "good", 2)
+			return true
+		end
+		notify("Model", "โหลดไม่สำเร็จ (โมเดลว่างหรือคัดลอกไม่ได้)", "bad", 3)
+		return false
+	end
+
+	--// ควบคุมการแสดงผล
+	Section(modelPage, "เลือกโมเดล")
+	TextBox(modelPage, "ชื่อโมเดล (ReplicatedStorage)", "NovaModel", function(text)
+		if text ~= "" then M.name = text end
+	end)
+	Button(modelPage, "โหลดโมเดลจากไฟล์", "ใช้โมเดลที่นำเข้าไว้ใน ReplicatedStorage", loadByName, "Load")
+	Button(modelPage, "โมเดลผี (สร้างอัตโนมัติ)", "สร้างจากพาร์ตในสคริปต์ ไม่ต้องนำเข้าไฟล์", function()
+		mount(buildGhost(), "GhostAuto")
+	end, "Show")
+	Button(modelPage, "ใช้ตัวละครของฉัน", "แสดงตัวละครที่คุณใส่อยู่", function()
+		local ch = player.Character
+		if not ch then return end
+		local wasArchivable = ch.Archivable
+		ch.Archivable = true
+		local m = prepare(ch)
+		ch.Archivable = wasArchivable
+		if not mount(m, player.DisplayName) then notify("Model", "คัดลอกตัวละครไม่ได้", "bad", 2) end
+	end, "Show")
+	--// สแกนโฟลเดอร์ NovaHub ใน ReplicatedStorage (โฟลเดอร์ที่คุณสร้างเองใน Studio)
+	Section(modelPage, "โมเดลในโฟลเดอร์ NovaHub")
+	local folderBox = Container(modelPage)
+	local function refreshFolder()
+		for _, ch in ipairs(folderBox:GetChildren()) do
+			if not ch:IsA("UIListLayout") then ch:Destroy() end
+		end
+		local f = ReplicatedStorage:FindFirstChild("NovaHub")
+		local list = {}
+		if f then
+			for _, c in ipairs(f:GetDescendants()) do
+				if (c:IsA("Model") or c:IsA("BasePart")) and not c.Parent:IsA("Model") then
+					table.insert(list, c)
+				end
+			end
+		end
+		if not f then
+			Label(folderBox, "ยังไม่พบโฟลเดอร์ NovaHub ใน ReplicatedStorage สร้าง Folder ชื่อ NovaHub แล้วใส่โมเดลลงไป", 52)
+		elseif #list == 0 then
+			Label(folderBox, "พบโฟลเดอร์ NovaHub แล้ว แต่ยังไม่มีโมเดลข้างใน", 40)
+		else
+			for _, item in ipairs(list) do
+				Button(folderBox, item.Name, item.ClassName, function()
+					if mount(prepare(item), item.Name) then
+						notify("Model", TF("แสดง %s", item.Name), "good", 2)
+					else
+						notify("Model", TF("แสดง %s ไม่ได้", item.Name), "bad", 3)
+					end
+				end, "Show")
+			end
+		end
+		translateTree(folderBox)
+		applyFont(folderBox)
+		return list
+	end
+	Button(modelPage, "สแกนโฟลเดอร์ใหม่", "ค้นหาโมเดลใน ReplicatedStorage > NovaHub", refreshFolder, "Scan")
+	local pendingScan = false
+	local function queueScan()
+		if pendingScan then return end
+		pendingScan = true
+		task.delay(0.5, function()
+			pendingScan = false
+			refreshFolder()
+		end)
+	end
+	ReplicatedStorage.DescendantAdded:Connect(queueScan)
+	ReplicatedStorage.DescendantRemoving:Connect(queueScan)
+
+	TextBox(modelPage, "Mesh ID", "เช่น 123456789", function(text) M.meshId = text end)
+	TextBox(modelPage, "Texture ID (ไม่บังคับ)", "เช่น 987654321", function(text) M.texId = text end)
+	Button(modelPage, "สร้างจาก Mesh ID", "ดึง Mesh จาก Asset ID มาแสดง", function()
+		local id = string.match(M.meshId, "%d+")
+		if not id then
+			notify("Model", "ใส่ Mesh ID ก่อน", "bad", 2)
+			return
+		end
+		local ok, part = pcall(function()
+			return InsertService:CreateMeshPartAsync("rbxassetid://" .. id, Enum.CollisionFidelity.Box, Enum.RenderFidelity.Automatic)
+		end)
+		if not ok or not part then
+			notify("Model", "สร้าง Mesh ไม่ได้ (เกมนี้ไม่อนุญาตหรือ ID ผิด)", "bad", 3)
+			return
+		end
+		local tid = string.match(M.texId, "%d+")
+		if tid then part.TextureID = "rbxassetid://" .. tid end
+		part.Anchored = true
+		mount(prepare(part), "Mesh " .. id)
+	end, "Create")
+	Label(modelPage, "อยากได้เมชจริง: Studio > Asset Manager > Bulk Import เลือกไฟล์ FBX พร้อมรูป Texture แล้วลากโมเดลไปไว้ในโฟลเดอร์ NovaHub (Folder ที่สร้างใน ReplicatedStorage) สคริปต์จะหาเจอเอง", 76)
+
+	--// ท่าเคลื่อนไหว
+	Section(modelPage, "เลือกท่าเคลื่อนไหว")
+	local animCards = {}
+	local function refreshAnims()
+		for key, st in pairs(animCards) do
+			local on = M.sel[key] == true
+			setSel(st, on)
+		end
+	end
+	Toggle(modelPage, "ผสมหลายท่าพร้อมกัน", "เลือกได้หลายท่า เช่น ลอยขึ้น-ลง + หมุน", false, function(on)
+		M.mix = on
+		if not on then
+			local first
+			for _, a in ipairs(ANIMS) do if M.sel[a.key] then first = a.key break end end
+			M.sel = first and {[first] = true} or {}
+			refreshAnims()
+		end
+	end)
+	local grid = Grid(modelPage, 2, 44)
+	for i, a in ipairs(ANIMS) do
+		local b = create("TextButton", {
+			BackgroundColor3 = Theme.Surface, Text = "", AutoButtonColor = false, LayoutOrder = i, Parent = grid,
+		}, {corner(10)})
+		local st = stroke(Theme.Stroke)
+		st.Parent = b
+		local ic = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 8, 0, 0), Size = UDim2.new(0, 26, 1, 0),
+			Font = Enum.Font.GothamBold, TextSize = 18, Text = a.icon, Parent = b,
+		})
+		bindAccent(ic, "TextColor3")
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 38, 0, 0), Size = UDim2.new(1, -42, 1, 0),
+			Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = a.name, Parent = b,
+		})
+		animCards[a.key] = st
+		b.MouseEnter:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface2}) end)
+		b.MouseLeave:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface}) end)
+		b.MouseButton1Click:Connect(function()
+			if M.mix then
+				M.sel[a.key] = not M.sel[a.key] or nil
+			else
+				M.sel = {[a.key] = true}
+			end
+			refreshAnims()
+		end)
+	end
+	refreshAnims()
+	Button(modelPage, "หยุดนิ่ง", "ยกเลิกท่าเคลื่อนไหวทั้งหมด", function()
+		M.sel = {}
+		refreshAnims()
+	end, "Stop")
+
+	Section(modelPage, "ปรับการเคลื่อนไหว")
+	Toggle(modelPage, "กลับทิศทาง", "สลับทิศ ซ้าย↔ขวา ขึ้น↔ลง", false, function(on) M.reverse = on end)
+	Toggle(modelPage, "หยุดชั่วคราว", "ค้างท่าไว้ที่ตำแหน่งปัจจุบัน", false, function(on) M.paused = on end)
+	Slider(modelPage, "ความเร็ว", 0, 300, 100, function(v) M.speed = v end, "%")
+	Slider(modelPage, "ระยะเคลื่อนที่", 20, 200, 100, function(v) M.range = v end, "%")
+
+	Section(modelPage, "มุมมอง")
+	Slider(modelPage, "ขนาดโมเดล", 50, 200, 100, function(v) M.size = v end, "%")
+	Slider(modelPage, "ซูมกล้อง", 4, 20, 9, function(v) M.zoom = v end)
+	Slider(modelPage, "ความสว่างแสง", 0, 100, 60, function(v)
+		local c = math.floor(40 + v * 2.1)
+		vpf.Ambient = Color3.fromRGB(c, c, math.min(255, c + 10))
+	end, "%")
+	local bgs = {
+		Midnight = Color3.fromRGB(22, 24, 40), Studio = Color3.fromRGB(58, 60, 70), Sunset = Color3.fromRGB(70, 40, 60),
+		Mint = Color3.fromRGB(30, 60, 55), Light = Color3.fromRGB(215, 218, 228),
+	}
+	Dropdown(modelPage, "สีพื้นหลัง", {"Midnight", "Studio", "Sunset", "Mint", "Light"}, "Midnight", function(n)
+		tween(vpf, 0.3, {BackgroundColor3 = bgs[n]})
+	end)
+	Toggle(modelPage, "ลากเพื่อหมุนเอง", "ลากนิ้ว/เมาส์บนภาพเพื่อหมุนมุมมอง", true, function(on) M.drag = on end)
+	Button(modelPage, "รีเซ็ตมุมมอง", "คืนมุมหมุนที่ลากไว้", function()
+		M.yaw, M.pitch = 0, 0
+	end, "Reset")
+
+	--// ลากหมุนมุมมอง
+	local dragging = false
+	vpf.InputBegan:Connect(function(i)
+		if M.drag and (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) then
+			dragging = true
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(i)
+		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			M.yaw += i.Delta.X * 0.012
+			M.pitch = math.clamp(M.pitch - i.Delta.Y * 0.012, -1.2, 1.2)
+		end
+	end)
+
+	--// อัปเดตอนิเมชันทุกเฟรม (ทำงานเฉพาะตอนเปิดแท็บ Model)
+	local conn = RunService.RenderStepped:Connect(function(dt)
+		if not (modelPage.Visible and main.Visible and M.model) then return end
+		if not M.paused then M.t += dt * M.speed / 100 end
+		local r = M.range / 100
+		local d = M.reverse and -1 or 1
+		local pos, rot, sc = Vector3.zero, CFrame.new(), 1
+		for _, a in ipairs(ANIMS) do
+			if M.sel[a.key] then
+				local p, q, s = a.fn(M.t, r, d)
+				if p then pos += p end
+				if q then rot = rot * q end
+				if s then sc *= s end
+			end
+		end
+		local target = M.baseScale * M.size / 100 * sc
+		if math.abs(target - M.curScale) > 0.002 then
+			M.curScale = target
+			pcall(function() M.model:ScaleTo(target) end)
+		end
+		M.model:PivotTo(CFrame.new(pos) * CFrame.Angles(M.pitch, M.yaw, 0) * rot * M.base)
+		vcam.CFrame = CFrame.lookAt(Vector3.new(0, 0.5, M.zoom), Vector3.zero)
+	end)
+	gui.Destroying:Connect(function() conn:Disconnect() end)
+
+	--// เริ่มต้น: ใช้ NovaModel ถ้ามี ไม่งั้นใช้ผีตัวอย่าง
+	local folderList = refreshFolder()
+	local found = folderList[1] or ReplicatedStorage:FindFirstChild(M.name, true)
+	if not (found and mount(prepare(found), found.Name)) then
+		mount(buildGhost(), "GhostAuto")
+	end
+end)()
+
+--// ---- HUD: หน้าต่างลอยสถานะ ----
+;(function()
+	local vpx = camera and camera.ViewportSize.X or 800
+	local hudW = math.clamp(vpx - 24, 250, 360)
+	local BAR_H, GLASS_H = 38, 84
+	local panelOn = true
+	local function fullH() return panelOn and (BAR_H + 6 + GLASS_H) or BAR_H end
+
+	local hudRoot = create("Frame", {
+		Name = "StatusHUD", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 10),
+		Size = UDim2.new(0, hudW, 0, fullH()), BackgroundTransparency = 1, ZIndex = 6, Parent = gui,
+	})
+	local barWrap = create("Frame", {BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, BAR_H), Parent = hudRoot})
+	addShadow(barWrap, {spread = 14, offset = 5, layers = 6, radius = 12, alpha = 0.7})
+	local bar = create("Frame", {
+		BackgroundColor3 = Theme.Surface, Size = UDim2.new(1, 0, 1, 0), Parent = barWrap,
+	}, {corner(12)})
+	local barStroke = stroke(Theme.Accent, 1.5, 0.35)
+	barStroke.Parent = bar
+	bindAccent(barStroke, "Color")
+	local line = create("Frame", {
+		BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -1), Size = UDim2.new(1, -28, 0, 2), Parent = bar,
+	}, {round()})
+	local lg = create("UIGradient", {Color = seqAccent(), Parent = line})
+	table.insert(accentHooks, function() lg.Color = seqAccent() end)
+
+	makeLogo(bar, UDim2.new(0, 26, 0, 26)).Position = UDim2.new(0, 22, 0.5, -1)
+	local fpsL = create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 42, 0, 0), Size = UDim2.new(0, 62, 1, -2),
+		Font = Enum.Font.GothamBlack, TextSize = 15, TextColor3 = Theme.Good, TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "⚡ --", Parent = bar,
+	})
+	local pingL = create("TextLabel", {
+		BackgroundTransparency = 1, Position = UDim2.new(0, 106, 0, 0), Size = UDim2.new(0, 74, 1, -2),
+		Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Text, TextXAlignment = Enum.TextXAlignment.Left,
+		Text = "📶 --", Parent = bar,
+	})
+	fpsL:SetAttribute("notr", true)
+	pingL:SetAttribute("notr", true)
+	local pill = create("TextLabel", {
+		AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 182, 0.5, -1), Size = UDim2.new(1, -182 - 36, 0, 22),
+		BackgroundColor3 = Theme.Surface2, Font = Enum.Font.GothamBold, TextSize = 10, TextColor3 = Theme.SubText,
+		TextTruncate = Enum.TextTruncate.AtEnd, Text = "", Parent = bar,
+	}, {round()})
+	pill:SetAttribute("t_BackgroundColor3", nil)
+	pill:SetAttribute("t_TextColor3", nil)
+	pill:SetAttribute("notr", true)
+
+	local arrow = create("TextButton", {
+		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -8, 0.5, -1), Size = UDim2.new(0, 24, 0, 24),
+		BackgroundColor3 = Theme.Surface2, Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = Theme.Text,
+		Text = "▾", AutoButtonColor = false, Parent = bar,
+	}, {corner(7)})
+	arrow:SetAttribute("nofont", true)
+
+	--// แผงสถานะใส
+	local glass = create("Frame", {
+		Name = "Glass", BackgroundColor3 = Theme.Background, BackgroundTransparency = 0.45,
+		Position = UDim2.new(0, 0, 0, BAR_H + 6), Size = UDim2.new(1, 0, 0, GLASS_H), ClipsDescendants = true, Parent = hudRoot,
+	}, {corner(12), stroke(Theme.Stroke, 1, 0.4)})
+	local defs = {"FPS BOOST", "SHADER", "Texture", "PING", "ผู้เล่นในเซิร์ฟเวอร์", "WalkSpeed"}
+	local vals = {}
+	local cw = (hudW - 24) / 3
+	for idx, key in ipairs(defs) do
+		local col, row = (idx - 1) % 3, (idx - 1) // 3
+		local x, y = 12 + col * cw, 8 + row * 38
+		local ttl = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, x, 0, y), Size = UDim2.new(0, cw - 6, 0, 12),
+			Font = Enum.Font.GothamMedium, TextSize = 9, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = "", Parent = glass,
+		})
+		ttl:SetAttribute("notr", true)
+		onLang(function() ttl.Text = string.upper(T(key)) end)
+		vals[idx] = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, x, 0, y + 13), Size = UDim2.new(0, cw - 6, 0, 18),
+			Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = "--", Parent = glass,
+		})
+		vals[idx]:SetAttribute("notr", true)
+	end
+
+	local function setPanel(on)
+		panelOn = on
+		arrow.Text = on and "▾" or "▴"
+		glass.Visible = on
+		tween(hudRoot, 0.25, {Size = UDim2.new(0, hudW, 0, fullH())}, Enum.EasingStyle.Quint)
+	end
+	arrow.MouseButton1Click:Connect(function() setPanel(not panelOn) end)
+	ext.hud.setPanel = setPanel
+	ext.hud.setVisible = function(on) hudRoot.Visible = on end
+	ext.hud.setGlass = function(v) glass.BackgroundTransparency = v / 100 end
+
+	--// ลากย้ายได้
+	do
+		local dragging, startInput, startPos = false, nil, nil
+		bar.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging, startInput, startPos = true, input.Position, hudRoot.Position
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then dragging = false end
+				end)
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(input)
+			if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				local d = input.Position - startInput
+				hudRoot.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
+			end
+		end)
+	end
+
+	task.spawn(function()
+		while gui.Parent do
+			fpsL.Text = "⚡ " .. fpsNow
+			fpsL.TextColor3 = fpsNow >= 50 and Theme.Good or (fpsNow >= 30 and Theme.Warn or Theme.Bad)
+			local ping = math.floor(player:GetNetworkPing() * 1000 * 2)
+			pingL.Text = "📶 " .. ping .. "ms"
+			local act = ext.boostActive()
+			if act > 0 then
+				pill.BackgroundColor3, pill.TextColor3 = Theme.Accent, Theme.OnAccent
+				if ext.post and ext.pre then
+					local g = math.floor((ext.post - ext.pre) / math.max(ext.pre, 1) * 100 + 0.5)
+					pill.Text = TF("⚡ BOOSTED %s%d%%", g >= 0 and "+" or "", g)
+				else
+					pill.Text = T("⚡ BOOSTED")
+				end
+			else
+				pill.BackgroundColor3, pill.TextColor3 = Theme.Surface2, Theme.SubText
+				pill.Text = T("BOOST OFF")
+			end
+			if panelOn then
+				vals[1].Text = act > 0 and TF("ON · %d/7", act) or T("OFF")
+				vals[1].TextColor3 = act > 0 and Theme.Good or Theme.SubText
+				vals[2].Text = shaderOn and (curPreset or T("Custom")) or T("OFF")
+				vals[2].TextColor3 = shaderOn and Theme.Accent or Theme.SubText
+				local texOn = texState.mat ~= nil and next(texOrig) ~= nil
+				vals[3].Text = texOn and texState.mat.Name or T("OFF")
+				vals[3].TextColor3 = texOn and Theme.Accent or Theme.SubText
+				vals[4].Text = ping .. " ms"
+				vals[4].TextColor3 = ping < 80 and Theme.Good or (ping < 160 and Theme.Warn or Theme.Bad)
+				vals[5].Text = #Players:GetPlayers() .. " / " .. Players.MaxPlayers
+				vals[6].Text = tostring(speedVal)
+			end
+			task.wait(0.25)
+		end
+	end)
+end)()
+
+--// ---- SETTINGS ----
+;(function()
+	--// ภาษา
+	Section(settingsP, "ภาษา")
+	local langNames = {}
+	for _, code in ipairs(LANG_ORDER) do table.insert(langNames, LANG_NAMES[code]) end
+	local langDD = Dropdown(settingsP, "ภาษาของ GUI", langNames, LANG_NAMES[lang], function(opt)
+		for code, nm in pairs(LANG_NAMES) do
+			if nm == opt then setLang(code) end
+		end
+	end)
+	onLang(function() langDD.Set(LANG_NAMES[lang]) end)
+
+	--// สไตล์
+	Section(settingsP, "สไตล์ GUI")
+	local styleGrid = Grid(settingsP, 2, 58)
+	local styleStrokes = {}
+	local accentStrokes = {}
+	local function clearAccentSel()
+		for _, st in pairs(accentStrokes) do setSel(st, false) end
+	end
+	for i, id in ipairs(STYLE_ORDER) do
+		local s = STYLES[id]
+		local b = create("TextButton", {
+			BackgroundColor3 = Theme.Surface, Text = "", AutoButtonColor = false, LayoutOrder = i, Parent = styleGrid,
+		}, {corner(10)})
+		local st = stroke(Theme.Stroke)
+		st.Parent = b
+		local prev = create("Frame", {
+			BackgroundColor3 = Color3.new(1, 1, 1), Position = UDim2.new(0, 8, 0.5, -19), Size = UDim2.new(0, 38, 0, 38), Parent = b,
+		}, {corner(8), create("UIGradient", {Color = s.preview, Rotation = 45})})
+		if s.logo == "yy" then buildYinYang(prev, UDim2.new(0.62, 0, 0.62, 0)) end
+		if s.logo == "dragon" then buildDragonHead(prev, UDim2.new(1.05, 0, 1.05, 0)) end
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 54, 0, 7), Size = UDim2.new(1, -58, 0, 16),
+			Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = STYLE_TEXT[id][1], Parent = b,
+		})
+		create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 54, 0, 24), Size = UDim2.new(1, -58, 0, 28),
+			Font = Enum.Font.Gotham, TextSize = 10, TextColor3 = Theme.SubText, TextWrapped = true,
+			TextTruncate = Enum.TextTruncate.AtEnd, TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top, Text = STYLE_TEXT[id][2], Parent = b,
+		})
+		styleStrokes[id] = st
+		b.MouseEnter:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface2}) end)
+		b.MouseLeave:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface}) end)
+		b.MouseButton1Click:Connect(function()
+			applyStyle(id)
+			for k, sst in pairs(styleStrokes) do setSel(sst, k == id) end
+			clearAccentSel()
+			notify("Theme", STYLE_TEXT[id][1], "info", 2)
+		end)
+	end
+	setSel(styleStrokes.nova, true)
+
+	--// สีหลัก
+	Section(settingsP, "สีหลัก (Accent)")
+	local ACCENTS = {
+		{"Blue", C(88, 130, 255), C(120, 190, 255)}, {"Purple", C(160, 100, 255), C(230, 120, 255)},
+		{"Green", C(70, 200, 130), C(140, 240, 110)}, {"Red", C(240, 85, 95), C(255, 150, 90)},
+		{"Orange", C(255, 150, 60), C(255, 205, 90)}, {"Pink", C(255, 100, 180), C(255, 160, 220)},
+		{"Gold", C(214, 178, 62), C(255, 225, 120)}, {"Cyan", C(60, 210, 230), C(90, 150, 255)},
+		{"White", C(255, 255, 255), C(190, 190, 200)}, {"Black", C(20, 20, 24), C(90, 90, 100)},
+		{"Rainbow"},
+	}
+	local accGrid = Grid(settingsP, 6, 34)
+	for i, a in ipairs(ACCENTS) do
+		local isRb = a[1] == "Rainbow"
+		local sw = create("TextButton", {
+			BackgroundColor3 = isRb and Color3.new(1, 1, 1) or a[2], Text = "", AutoButtonColor = false,
+			LayoutOrder = i, Parent = accGrid,
+		}, {corner(8)})
+		if isRb then
+			create("UIGradient", {Color = ColorSequence.new({
+				kp(0, C(255, 90, 90)), kp(0.2, C(255, 210, 80)), kp(0.4, C(110, 230, 140)),
+				kp(0.6, C(80, 200, 255)), kp(0.8, C(150, 110, 255)), kp(1, C(255, 100, 200)),
+			}), Rotation = 20, Parent = sw})
+		end
+		local st = stroke(Theme.Stroke)
+		st.Parent = sw
+		accentStrokes[a[1]] = st
+		sw.MouseButton1Click:Connect(function()
+			if isRb then startRainbow() else setAccent(a[2], a[3]) end
+			for k, sst in pairs(accentStrokes) do setSel(sst, k == a[1], 3) end
+		end)
+	end
+
+	--// ฟอนต์
+	Section(settingsP, "ฟอนต์")
+	local fontGrid = Grid(settingsP, 2, 42)
+	local fontStrokes = {}
+	for i, fam in ipairs(FAMILIES) do
+		local b = create("TextButton", {
+			BackgroundColor3 = Theme.Surface, Text = "", AutoButtonColor = false, LayoutOrder = i, Parent = fontGrid,
+		}, {corner(8)})
+		local st = stroke(Theme.Stroke)
+		st.Parent = b
+		local nm = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 10, 0, 4), Size = UDim2.new(1, -16, 0, 18),
+			Font = fam.fonts[3], TextSize = 13, TextColor3 = Theme.Text, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = fam.name, Parent = b,
+		})
+		local sm = create("TextLabel", {
+			BackgroundTransparency = 1, Position = UDim2.new(0, 10, 0, 22), Size = UDim2.new(1, -16, 0, 14),
+			Font = fam.fonts[1], TextSize = 11, TextColor3 = Theme.SubText, TextTruncate = Enum.TextTruncate.AtEnd,
+			TextXAlignment = Enum.TextXAlignment.Left, Text = "Aa Bb 123  กขค  中文", Parent = b,
+		})
+		nm:SetAttribute("nofont", true)
+		sm:SetAttribute("nofont", true)
+		sm:SetAttribute("notr", true)
+		fontStrokes[i] = st
+		b.MouseEnter:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface2}) end)
+		b.MouseLeave:Connect(function() tween(b, 0.12, {BackgroundColor3 = Theme.Surface}) end)
+		b.MouseButton1Click:Connect(function()
+			curFamily = fam.fonts
+			applyFont(gui)
+			for j, sst in ipairs(fontStrokes) do setSel(sst, j == i) end
+		end)
+	end
+	setSel(fontStrokes[1], true)
+	Label(settingsP, "ถ้าฟอนต์ที่เลือกไม่มีตัวอักษรไทยหรือจีน Roblox จะใช้ฟอนต์สำรองของระบบแสดงแทน")
+
+	--// เงาและเอฟเฟกต์
+	Section(settingsP, "เงาและเอฟเฟกต์")
+	Toggle(settingsP, "เงาหน้าต่าง", "เงานุ่มรอบหน้าต่าง ปุ่ม และแจ้งเตือน", true, function(on)
+		shadowEnabled = on
+		refreshShadows()
+	end)
+	Toggle(settingsP, "เงาเรืองแสงสีหลัก", "ให้เงาเป็นสีหลักเรืองรอบๆ", false, function(on) setShadowGlow(on) end)
+	Toggle(settingsP, "ความลึกของการ์ด", "ไฮไลต์ขอบบนและเงาด้านล่างของการ์ด", true, function(on) setDepth(on) end)
+	Toggle(settingsP, "เงาตัวอักษร", "เงาบางๆ ใต้หัวข้อ", true, function(on) setTextShadow(on) end)
+	Toggle(settingsP, "ขอบเรืองแสง", "ขอบหน้าต่างเรืองตามสีหลัก", true, function(on) setGlow(on) end)
+	Slider(settingsP, "ความเข้มเงา", 0, 200, 100, function(v)
+		shadowStrength = v / 100
+		refreshShadows()
+	end, "%")
+	Slider(settingsP, "ระยะเงา", 0, 200, 100, function(v)
+		shadowOffsetMul = v / 100
+		refreshShadows()
+	end, "%")
+	Slider(settingsP, "ความโปร่งใสหน้าต่าง", 0, 60, 0, function(v) main.BackgroundTransparency = v / 100 end, "%")
+
+	--// โลโก้
+	Section(settingsP, "โลโก้")
+	Dropdown(settingsP, "รูปแบบโลโก้", {"Auto", "Nova", "Yin Yang", "Dragon"}, "Auto", function(o)
+		logoMode = o
+		refreshLogos()
+	end)
+	TextBox(settingsP, "รูปโลโก้ของคุณ (Image ID)", "เว้นว่างเพื่อใช้โลโก้เดิม", function(text)
+		customLogoId = string.match(text, "%d+")
+		refreshLogos()
+		notify("Logo", customLogoId and "ใช้โลโก้ของคุณแล้ว" or "กลับไปใช้โลโก้เดิมแล้ว", "info", 2)
+	end)
+	Label(settingsP, "ยังไม่มีไฟล์โลโก้จากคุณ จึงวาดโลโก้ด้วย UI ให้ก่อน ใส่ Image ID (ไม่ใช่ Decal ID) เพื่อเปลี่ยนเป็นโลโก้จริงของคุณ")
+
+	--// ทั่วไป
+	Section(settingsP, "หน้าต่างลอย")
+	Toggle(settingsP, "หน้าต่างสถานะลอย", "แถบเล็กแนวนอนสีตามธีม ลากย้ายได้", true, function(on) ext.hud.setVisible(on) end)
+	Toggle(settingsP, "แผงสถานะใส", "แสดง Boost, Shader, Texture, Ping ใต้แถบ", true, function(on) ext.hud.setPanel(on) end)
+	Slider(settingsP, "ความใสของแผงสถานะ", 10, 90, 45, function(v) ext.hud.setGlass(v) end, "%")
+
+	Section(settingsP, "ทั่วไป")
+	Toggle(settingsP, "ปุ่มโลโก้ลอย เปิด/ปิด GUI", "แสดงปุ่มกลมบนหน้าจอ (ลากย้ายได้)", true, function(on) floatRoot.Visible = on end)
+	Toggle(settingsP, "การแจ้งเตือน", "แสดงป๊อปอัพมุมขวาล่าง", true, function(on) notificationsEnabled = on end)
+	Label(settingsP, "ปุ่มลัด: RightShift = ซ่อน/แสดง GUI  •  มือถือใช้ปุ่มโลโก้ลอย")
+	Button(settingsP, "ปิด GUI ถาวร", "ลบ GUI และคืนค่า Shader", function()
+		gui:Destroy()
+	end, "Close")
+end)()
+
+--// ===== Window controls =====
+minBtn.MouseButton1Click:Connect(function()
+	minimized = not minimized
+	if minimized then
+		body.Visible = false
+		tween(main, 0.3, {Size = fullSize()}, Enum.EasingStyle.Quint)
+	else
+		tween(main, 0.35, {Size = fullSize()}, Enum.EasingStyle.Back)
+		task.delay(0.15, function() body.Visible = true end)
+	end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+	setHub(false)
+	notify("NOVA HUB", "ซ่อนแล้ว กดปุ่มโลโก้หรือ RightShift เพื่อเปิดอีกครั้ง", "info", 3)
+end)
+
+--// ล้างเอฟเฟกต์เมื่อปิด GUI ถาวร
+gui.Destroying:Connect(function()
+	for _, c in ipairs(allConns) do pcall(function() c:Disconnect() end) end
+	shaderOn = false
+	applyShader()
+	for _, e in pairs(fx) do e:Destroy() end
+	if atmosMine then atmos:Destroy() end
+end)
+
+--// เริ่มต้น
+selectTab("Home")
+applyFont(gui)
+setLang(lang)
+refreshShadows()
+task.delay(0.6, function()
+	notify("NOVA HUB v3", "โหลดสำเร็จ! กดปุ่มโลโก้หรือ RightShift เพื่อเปิด-ปิด", "good", 4)
+end)
